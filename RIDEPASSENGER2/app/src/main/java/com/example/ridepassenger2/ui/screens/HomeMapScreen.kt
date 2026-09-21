@@ -3,6 +3,7 @@ package com.example.ridepassenger2.ui.screens
 import android.Manifest
 import android.annotation.SuppressLint
 import android.location.Location
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -10,6 +11,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -197,28 +199,28 @@ fun HomeMapScreen(
                 Box(modifier = Modifier.align(Alignment.CenterHorizontally).width(36.dp).height(4.dp).clip(RoundedCornerShape(999.dp)).background(Color(0xFF2A3540)))
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Ride / Share toggle — dark track, white selected pill (reference)
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(DarkPill)
-                        .border(1.dp, DarkBorder.copy(alpha = 0.6f), RoundedCornerShape(999.dp))
-                        .padding(4.dp)
-                ) {
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        listOf("Ride", "Share").forEach { tab ->
-                            val isSelected = selectedTab == tab
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(999.dp))
-                                    .background(if (isSelected) Color.White else Color.Transparent)
-                                    .clickable { selectedTab = tab; if (tab == "Share") onTabShare() }
-                                    .padding(vertical = 9.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(text = tab, fontSize = 13.sp, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium, color = if (isSelected) OnMintDark else DarkMuted)
+                // Bolt category chips — green family to match the home design.
+                // Active = solid green, inactive = dark with green outline + green text.
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    items(listOf("Ride" to "🚗", "Share" to "👥", "Schedule" to "🕒", "Package" to "📦")) { (label, icon) ->
+                        val active = selectedTab == label
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(if (active) MintSoft else DarkPill)
+                                .border(1.dp, if (active) MintSoft else Mint.copy(alpha = 0.35f), RoundedCornerShape(999.dp))
+                                .clickable {
+                                    when (label) {
+                                        "Share" -> { selectedTab = label; onTabShare() }
+                                        "Schedule", "Package" -> Toast.makeText(context, "$label coming soon", Toast.LENGTH_SHORT).show()
+                                        else -> selectedTab = label
+                                    }
+                                }
+                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                        ) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(text = icon, fontSize = 12.sp)
+                                Text(text = label, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = if (active) OnMintDark else Mint)
                             }
                         }
                     }
@@ -226,6 +228,13 @@ fun HomeMapScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 if (destination == null) {
+                    // Saved places — Bolt Home/Work shortcuts
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SavedPlaceCard(icon = "⌂", title = "Home", subtitle = "Set home", modifier = Modifier.weight(1f), onClick = { Toast.makeText(context, "Saved places coming soon", Toast.LENGTH_SHORT).show() })
+                        SavedPlaceCard(icon = "💼", title = "Work", subtitle = "Set work", modifier = Modifier.weight(1f), onClick = { Toast.makeText(context, "Saved places coming soon", Toast.LENGTH_SHORT).show() })
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+
                     // Recent
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -261,6 +270,9 @@ fun HomeMapScreen(
                             }
                         }
                     }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    // Payment method — Bolt sheet row
+                    PaymentRow(onChange = { Toast.makeText(context, "Payments coming soon", Toast.LENGTH_SHORT).show() })
                     Spacer(modifier = Modifier.height(16.dp))
                 } else {
                     // Route summary header
@@ -319,6 +331,9 @@ fun HomeMapScreen(
                         Box(modifier = Modifier.width(1.dp).height(28.dp).background(DarkBorder))
                         TrustItem("24/7", "Support")
                     }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    // Payment method — Bolt sheet row
+                    PaymentRow(onChange = { Toast.makeText(context, "Payments coming soon", Toast.LENGTH_SHORT).show() })
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // CTA — mint with dark text (reference)
@@ -356,27 +371,10 @@ fun HomeMapScreen(
                 )
 
                 Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 16.dp)) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) { repeat(2) { Box(modifier = Modifier.width(5.dp).height(16.dp).clip(RoundedCornerShape(4.dp)).background(Mint)) } }
-                            Text(text = "Rida", color = DarkTitle, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-                        }
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .shadow(2.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.4f))
-                                .clip(CircleShape)
-                                .background(DarkCardBg)
-                                .border(1.dp, DarkBorder, CircleShape)
-                                .clickable(onClick = onProfile),
-                            contentAlignment = Alignment.Center
-                        ) { Text(text = "DM", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkTitle) }
-                    }
+                    Spacer(modifier = Modifier.height(6.dp))
 
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Search card over the dark map (reference)
+                    // Compact top bar — Rida + location + search in ONE slim card,
+                    // leaving maximum room for the map underneath.
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -384,22 +382,39 @@ fun HomeMapScreen(
                             .clip(RoundedCornerShape(20.dp))
                             .background(DarkCardBg2.copy(alpha = 0.96f))
                             .border(1.dp, DarkBorder, RoundedCornerShape(20.dp))
-                            .padding(12.dp)
+                            .padding(horizontal = 12.dp, vertical = 10.dp)
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                                Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(MintSoft))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(text = "Your location", fontSize = 11.sp, color = DarkMuted, fontWeight = FontWeight.Medium)
-                                    Text(text = if (permissionState.status.isGranted) (currentLocation?.let { "%.4f, %.4f".format(it.latitude, it.longitude) } ?: "Locating…") else "Tap to enable GPS", fontSize = 12.5.sp, color = DarkBody, fontWeight = FontWeight.SemiBold)
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) { repeat(2) { Box(modifier = Modifier.width(4.dp).height(14.dp).clip(RoundedCornerShape(4.dp)).background(Mint)) } }
+                                    Text(text = "Rida", color = DarkTitle, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                                 }
-                                Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(DarkPill).border(1.dp, DarkBorder, CircleShape).clickable { if (!permissionState.status.isGranted) permissionState.launchPermissionRequest() else fetchLocation() }, contentAlignment = Alignment.Center) {
-                                    Text(text = "◎", color = Mint, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text(text = "Your location", fontSize = 10.sp, color = DarkMuted, fontWeight = FontWeight.Medium)
+                                        Text(
+                                            text = if (permissionState.status.isGranted) (currentLocation?.let { "%.4f, %.4f".format(it.latitude, it.longitude) } ?: "Locating…") else "Tap to enable GPS",
+                                            fontSize = 11.5.sp,
+                                            color = DarkBody,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1
+                                        )
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(CircleShape)
+                                            .background(DarkCardBg)
+                                            .border(1.dp, DarkBorder, CircleShape)
+                                            .clickable(onClick = onProfile),
+                                        contentAlignment = Alignment.Center
+                                    ) { Text(text = "DM", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkTitle) }
                                 }
                             }
                             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(DarkDivider))
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                                Box(modifier = Modifier.size(16.dp).clip(CircleShape).background(DarkPill), contentAlignment = Alignment.Center) { Text(text = "⌖", fontSize = 10.sp, color = DarkMuted, fontWeight = FontWeight.Bold) }
+                                Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(MintSoft))
                                 TextField(
                                     value = query,
                                     onValueChange = { query = it; searchFocused = true },
@@ -420,6 +435,7 @@ fun HomeMapScreen(
                                     textStyle = LocalTextStyle.current.copy(fontSize = 13.5.sp, color = DarkTitle)
                                 )
                                 if (query.isNotEmpty()) Box(modifier = Modifier.clip(CircleShape).background(DarkPill).clickable { query = ""; destination = null; destinationLabel = null; routePoints = emptyList(); searchResults = emptyList() }.padding(6.dp)) { Text(text = "✕", fontSize = 10.sp, color = DarkMuted) }
+                                else Box(modifier = Modifier.size(30.dp).clip(CircleShape).background(DarkPill).border(1.dp, DarkBorder, CircleShape).clickable { if (!permissionState.status.isGranted) permissionState.launchPermissionRequest() else fetchLocation() }, contentAlignment = Alignment.Center) { Text(text = "◎", color = Mint, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                             }
                         }
                     }
@@ -445,19 +461,35 @@ fun HomeMapScreen(
                     Spacer(modifier = Modifier.weight(1f))
                 }
 
-                // Re-center FAB — dark
-                Box(
+                // Safety + re-center rail — Bolt-style right side
+                Column(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
-                        .padding(end = 16.dp, bottom = 252.dp)
-                        .size(44.dp)
-                        .shadow(6.dp, CircleShape)
-                        .clip(CircleShape)
-                        .background(DarkCardBg)
-                        .border(1.dp, DarkBorder, CircleShape)
-                        .clickable { if (!permissionState.status.isGranted) permissionState.launchPermissionRequest() else fetchLocation() },
-                    contentAlignment = Alignment.Center
-                ) { Text(text = "◎", color = Mint, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
+                        .padding(end = 16.dp, bottom = 252.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .shadow(6.dp, CircleShape)
+                            .clip(CircleShape)
+                            .background(DarkCardBg)
+                            .border(1.dp, DarkBorder, CircleShape)
+                            .clickable { Toast.makeText(context, "Safety toolkit coming soon", Toast.LENGTH_SHORT).show() },
+                        contentAlignment = Alignment.Center
+                    ) { Text(text = "🛡", fontSize = 16.sp) }
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .shadow(6.dp, CircleShape)
+                            .clip(CircleShape)
+                            .background(DarkCardBg)
+                            .border(1.dp, DarkBorder, CircleShape)
+                            .clickable { if (!permissionState.status.isGranted) permissionState.launchPermissionRequest() else fetchLocation() },
+                        contentAlignment = Alignment.Center
+                    ) { Text(text = "◎", color = Mint, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
+                }
             }
         }
     )
@@ -471,6 +503,48 @@ private fun TrustItem(value: String, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(text = value, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = DarkTitle)
         Text(text = label, fontSize = 10.5.sp, color = DarkMuted)
+    }
+}
+
+@Composable
+private fun SavedPlaceCard(icon: String, title: String, subtitle: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(DarkCardBg)
+            .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(DarkPill), contentAlignment = Alignment.Center) { Text(text = icon, fontSize = 13.sp) }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = DarkBody)
+            Text(text = subtitle, fontSize = 11.sp, color = DarkMuted)
+        }
+    }
+}
+
+@Composable
+private fun PaymentRow(onChange: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(DarkCardBg2)
+            .border(1.dp, DarkBorder.copy(alpha = 0.7f), RoundedCornerShape(12.dp))
+            .clickable(onClick = onChange)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(DarkPill), contentAlignment = Alignment.Center) { Text(text = "💵", fontSize = 13.sp) }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = "Cash", fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = DarkBody)
+            Text(text = "Default payment", fontSize = 11.sp, color = DarkMuted)
+        }
+        Text(text = "Change ›", fontSize = 11.5.sp, color = Mint, fontWeight = FontWeight.SemiBold)
     }
 }
 

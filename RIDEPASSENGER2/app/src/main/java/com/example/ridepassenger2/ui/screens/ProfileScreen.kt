@@ -18,8 +18,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val ProfileGreen = Color(0xFF237055)
-private val AvatarBg = Color(0xFF68BAA0)
+// Dark palette — locked to the home screen
+private val ProfPageBg = Color(0xFF0A0F14)
+private val ProfCardBg = Color(0xFF181F26)
+private val ProfBorder = Color(0xFF26313B)
+private val ProfPill = Color(0xFF1C252D)
+private val ProfTitle = Color.White
+private val ProfBody = Color(0xFFF3F4F6)
+private val ProfMuted = Color(0xFF9CA3AF)
+private val ProfChevron = Color(0xFF3A4653)
+private val ProfMint = Color(0xFF43D2A1)
+private val ProfAvatarBg = Color(0xFF1E3A32)
 
 @Composable
 fun ProfileScreen(
@@ -40,7 +49,7 @@ private fun ProfileScreenInternal(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(ProfPageBg)
             .statusBarsPadding()
     ) {
         // Top bar
@@ -53,18 +62,20 @@ private fun ProfileScreenInternal(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                    repeat(2) { Box(modifier = Modifier.width(4.dp).height(14.dp).clip(RoundedCornerShape(4.dp)).background(Color(0xFF10B981))) }
+                    repeat(2) { Box(modifier = Modifier.width(4.dp).height(14.dp).clip(RoundedCornerShape(4.dp)).background(ProfMint)) }
                 }
-                Text(text = "Rida", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF111827))
+                Text(text = "Rida", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = ProfTitle)
             }
             Box(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
+                    .background(ProfCardBg)
+                    .border(1.dp, ProfBorder, CircleShape)
                     .clickable(onClick = onSettings),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "⚙", fontSize = 18.sp, color = Color(0xFF374151))
+                Text(text = "⚙", fontSize = 16.sp, color = ProfMuted)
             }
         }
 
@@ -78,36 +89,39 @@ private fun ProfileScreenInternal(
             Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(
                     modifier = Modifier
-                        .size(64.dp)
+                        .size(68.dp)
                         .clip(CircleShape)
-                        .background(AvatarBg),
+                        .background(ProfAvatarBg)
+                        .border(1.5.dp, ProfMint.copy(alpha = 0.4f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "DM", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF111827))
+                    Text(text = "DM", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = ProfTitle)
                 }
                 Spacer(modifier = Modifier.height(10.dp))
-                Text(text = "Dadi Mwenge", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF111827))
-                Text(text = "@dadi_mwenge", fontSize = 12.sp, color = Color(0xFF9CA3AF))
+                Text(text = "Dadi Mwenge", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = ProfTitle)
+                Text(text = "@dadi_mwenge", fontSize = 12.sp, color = ProfMuted)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(text = "Rides. People. A better way.", fontSize = 12.sp, color = Color(0xFF9CA3AF))
+                Text(text = "Rides. People. A better way.", fontSize = 12.sp, color = ProfMuted)
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
+            // Stats card
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 12.dp),
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(ProfCardBg)
+                    .border(1.dp, ProfBorder, RoundedCornerShape(16.dp))
+                    .padding(vertical = 14.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 StatItem("12", "Rides taken")
-                Box(modifier = Modifier.width(1.dp).height(36.dp).background(Color(0xFFF3F4F6)))
+                Box(modifier = Modifier.width(1.dp).height(36.dp).background(ProfBorder))
                 StatItemWithStar("4.8", "Rating")
-                Box(modifier = Modifier.width(1.dp).height(36.dp).background(Color(0xFFF3F4F6)))
+                Box(modifier = Modifier.width(1.dp).height(36.dp).background(ProfBorder))
                 StatItem("2", "Rides shared")
             }
-
-            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF3F4F6)))
 
             Spacer(modifier = Modifier.height(14.dp))
 
@@ -121,15 +135,15 @@ private fun ProfileScreenInternal(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White)
-                        .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(12.dp))
+                        .background(ProfCardBg)
+                        .border(1.dp, ProfBorder, RoundedCornerShape(12.dp))
                         .clickable(onClick = onLogOut)
                         .padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(text = "↗", fontSize = 16.sp, color = Color(0xFF6B7280))
-                    Text(text = "Log Out", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF374151))
+                    Text(text = "↗", fontSize = 16.sp, color = ProfMuted)
+                    Text(text = "Log Out", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = ProfBody)
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
@@ -151,8 +165,8 @@ fun ProfileScreen(
 @Composable
 private fun StatItem(value: String, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF111827))
-        Text(text = label, fontSize = 11.sp, color = Color(0xFF9CA3AF), modifier = Modifier.padding(top = 2.dp))
+        Text(text = value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = ProfTitle)
+        Text(text = label, fontSize = 11.sp, color = ProfMuted, modifier = Modifier.padding(top = 2.dp))
     }
 }
 
@@ -160,10 +174,10 @@ private fun StatItem(value: String, label: String) {
 private fun StatItemWithStar(value: String, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(text = value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF111827))
-            Text(text = "★", fontSize = 12.sp, color = Color(0xFF10B981))
+            Text(text = value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = ProfTitle)
+            Text(text = "★", fontSize = 12.sp, color = ProfMint)
         }
-        Text(text = label, fontSize = 11.sp, color = Color(0xFF9CA3AF), modifier = Modifier.padding(top = 2.dp))
+        Text(text = label, fontSize = 11.sp, color = ProfMuted, modifier = Modifier.padding(top = 2.dp))
     }
 }
 
@@ -173,20 +187,22 @@ private fun ProfileMenuItem(icon: String, title: String, subtitle: String, onCli
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White)
-            .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(12.dp))
+            .background(ProfCardBg)
+            .border(1.dp, ProfBorder, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(text = icon, fontSize = 16.sp, color = Color(0xFF6B7280))
+            Box(modifier = Modifier.size(34.dp).clip(CircleShape).background(ProfPill), contentAlignment = Alignment.Center) {
+                Text(text = icon, fontSize = 15.sp)
+            }
             Column {
-                Text(text = title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1F2937))
-                Text(text = subtitle, fontSize = 11.sp, color = Color(0xFF9CA3AF))
+                Text(text = title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = ProfBody)
+                Text(text = subtitle, fontSize = 11.sp, color = ProfMuted)
             }
         }
-        Text(text = "›", fontSize = 18.sp, color = Color(0xFFD1D5DB))
+        Text(text = "›", fontSize = 18.sp, color = ProfChevron)
     }
 }

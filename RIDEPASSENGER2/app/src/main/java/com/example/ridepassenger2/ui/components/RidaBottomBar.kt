@@ -11,12 +11,19 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+
+// Dark bar — locked to the home palette
+private val BarBg = Color(0xFF101418)
+private val BarGreen = Color(0xFF43D2A1)
+private val BarInactive = Color(0xFF9CA3AF)
 
 /**
- * Default bottom bar — plain Material3, no custom designs.
+ * Dark bottom bar matching the home screen. Active tab is green.
  * Tabs: Home | Activity | Ride (center action) | Profile
  */
 @Composable
@@ -33,7 +40,18 @@ fun RidaBottomBar(
         else -> selected
     }
 
-    NavigationBar(modifier = modifier) {
+    val colors = NavigationBarItemDefaults.colors(
+        selectedIconColor = BarGreen,
+        selectedTextColor = BarGreen,
+        indicatorColor = BarGreen.copy(alpha = 0.14f),
+        unselectedIconColor = BarInactive,
+        unselectedTextColor = BarInactive
+    )
+
+    NavigationBar(
+        modifier = modifier,
+        containerColor = BarBg
+    ) {
         NavigationBarItem(
             selected = norm == "Home",
             onClick = onHome,
@@ -43,7 +61,8 @@ fun RidaBottomBar(
                     imageVector = if (norm == "Home") Icons.Filled.Home else Icons.Outlined.Home,
                     contentDescription = "Home"
                 )
-            }
+            },
+            colors = colors
         )
         NavigationBarItem(
             selected = norm == "Activity",
@@ -54,7 +73,8 @@ fun RidaBottomBar(
                     imageVector = if (norm == "Activity") Icons.Filled.History else Icons.Outlined.History,
                     contentDescription = "Activity"
                 )
-            }
+            },
+            colors = colors
         )
         NavigationBarItem(
             selected = false,
@@ -65,7 +85,8 @@ fun RidaBottomBar(
                     imageVector = Icons.Filled.DirectionsCar,
                     contentDescription = "Request a ride"
                 )
-            }
+            },
+            colors = colors
         )
         NavigationBarItem(
             selected = norm == "Profile",
@@ -76,7 +97,8 @@ fun RidaBottomBar(
                     imageVector = if (norm == "Profile") Icons.Filled.Person else Icons.Outlined.Person,
                     contentDescription = "Profile"
                 )
-            }
+            },
+            colors = colors
         )
     }
 }

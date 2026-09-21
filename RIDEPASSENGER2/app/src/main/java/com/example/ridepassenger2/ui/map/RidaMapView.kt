@@ -1,8 +1,13 @@
 package com.example.ridepassenger2.ui.map
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color as AndroidColor
 import android.graphics.Paint
+import android.graphics.RadialGradient
+import android.graphics.Shader
+import android.graphics.drawable.BitmapDrawable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -51,6 +56,9 @@ fun RidaMapView(
         context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE)
     )
     Configuration.getInstance().userAgentValue = context.packageName
+
+    // Bolt-style puck, built once: dark skeuomorphic disc, green core.
+    val puck = remember(context) { makeLocationPuck(context) }
 
     val mapView = remember {
         // Dark mode gets its own provider: same Google tiles, night-transformed
@@ -101,11 +109,14 @@ fun RidaMapView(
     LaunchedEffect(currentLocation, destination, routePoints, driverLocations, enableMyLocation) {
         mapView.overlays.clear()
 
-        // MyLocation overlay (blue dot + accuracy ring) when enabled and permission granted
+        // MyLocation overlay (accuracy ring) with the Bolt-style puck person icon.
+        // NOTE: follow-mode is intentionally OFF — the user pans freely and
+        // returns via the re-center button.
         if (enableMyLocation) {
             val myLocationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(context), mapView).apply {
                 enableMyLocation()
-                enableFollowLocation()
+                setPersonIcon(puck)
+                setPersonAnchor(0.5f, 0.5f)
             }
             mapView.overlays.add(myLocationOverlay)
         }
@@ -149,12 +160,13 @@ fun RidaMapView(
             mapView.overlays.add(marker)
         }
 
-        // Current location custom marker (when MyLocation overlay not used, or as extra)
+        // Current location puck (when MyLocation overlay not used, or as extra)
         if (currentLocation != null && !enableMyLocation) {
             val me = Marker(mapView).apply {
                 position = currentLocation
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                 title = "You"
+                icon = BitmapDrawable(context.resources, puck)
             }
             mapView.overlays.add(me)
         }
@@ -189,4 +201,72 @@ fun MapView.animateTo(geoPoint: GeoPoint, zoom: Double = 15.0) {
     controller.animateTo(geoPoint)
     controller.setZoom(zoom)
     invalidate()
+}
+
+/**
+ * Bolt-style location puck: dark skeuomorphic disc (radial shading + rim +
+ * top light-catch) with a glowing green core.
+ */
+private fun makeLocationPuck(context: Context): Bitmap {
+    val density = context.resources.displayMetrics.density
+    val size = (34 * density).toInt()
+    val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val cx = size / 2f
+    val cy = size / 2f
+
+    // Soft outer glow
+    val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = AndroidColor.argb(70, 67, 210, 161)
+    }
+    val discR = size * 0.36f
+    c.drawCircle(cx, cy, discR + 5 * density, glowPaint)
+
+    // Dark disc — bright middle fading to near-black edge (skeuomorphic depth)
+    val discColors: IntArray = intArrayOf(0xFF3B4653.toInt(), 0xFF161D24.toInt(), 0xFF080C10.toInt())
+    val discStops: FloatArray = floatArrayOf(0f, 0.65f, 1f)
+    val discPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        shader = RadialGradient(cx, cy, discR, discColors, discStops, Shader.TileMode.CLAMP)
+    }
+    c.drawCircle(cx, cy, discR, discPaint)
+    // Top light pool (the offset glow a two-point gradient would give)
+    val poolPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = AndroidColor.argb(38, 255, 255, 255)
+    }
+    c.drawCircle(cx, cy - discR * 0.38f, discR * 0.52f, poolPaint)
+
+    // Thin rim ring
+    val rimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 1.6f * density
+        color = 0xFF4A5560.toInt()
+    }
+    c.drawCircle(cx, cy, discR - 1 * density, rimPaint)
+
+    // Top light-catch arc
+    val arcPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 1.8f * density
+        strokeCap = Paint.Cap.ROUND
+        color = AndroidColor.argb(110, 255, 255, 255)
+    }
+    val inset = discR - 3.2f * density
+    c.drawArc(cx - inset, cy - inset, cx + inset, cy + inset, 200f, 140f, false, arcPaint)
+
+    // Dark gap ring around the core
+    val coreR = size * 0.17f
+    val gapPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF0A0E12.toInt()
+    }
+    c.drawCircle(cx, cy, coreR + 2.2f * density, gapPaint)
+
+    // Green core — bright center fading to mint edge
+    val coreColors: IntArray = intArrayOf(0xFF9DF5CB.toInt(), 0xFF43D2A1.toInt(), 0xFF23A67D.toInt())
+    val coreStops: FloatArray = floatArrayOf(0f, 0.6f, 1f)
+    val corePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        shader = RadialGradient(cx, cy, coreR, coreColors, coreStops, Shader.TileMode.CLAMP)
+    }
+    c.drawCircle(cx, cy, coreR, corePaint)
+
+    return bmp
 }
