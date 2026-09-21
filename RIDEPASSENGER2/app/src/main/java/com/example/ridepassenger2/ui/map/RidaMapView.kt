@@ -11,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
@@ -21,7 +20,9 @@ import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 
 /**
  * Compose wrapper around osmdroid MapView.
- * - Supports Google tiles (lyrs=m / y) + OSM fallback
+ * - Google tiles (lyrs=m / y), night-transformed via NightTileProvider
+ * - Draws current location, destination marker, and OSRM route polyline
+ * - Lightweight: no fragment, direct AndroidView lifecycle
  * - Draws current location, destination marker, and OSRM route polyline
  * - Lightweight: no fragment, direct AndroidView lifecycle
  */
@@ -32,6 +33,7 @@ fun RidaMapView(
     zoom: Double = 13.5,
     useGoogleTiles: Boolean = true,
     useSatellite: Boolean = false,
+    useDarkTiles: Boolean = false,
     currentLocation: GeoPoint? = null,
     destination: GeoPoint? = null,
     routePoints: List<GeoPoint> = emptyList(),
@@ -41,21 +43,31 @@ fun RidaMapView(
 ) {
     val context = LocalContext.current
 
-    // osmdroid needs a user-agent; set once
-    DisposableEffect(Unit) {
-        Configuration.getInstance().userAgentValue = context.packageName
-        onDispose { }
-    }
+    // osmdroid REQUIRED setup — must run before ANY provider/MapView is created,
+    // otherwise the tile writer initialises with a null base path and no tile
+    // is ever persisted (plus a storm of NPE debug logs).
+    Configuration.getInstance().load(
+        context,
+        context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE)
+    )
+    Configuration.getInstance().userAgentValue = context.packageName
 
     val mapView = remember {
-        MapView(context).apply {
-            setTileSource(
-                when {
-                    useSatellite -> GoogleTileSources.GoogleSatellite
-                    useGoogleTiles -> GoogleTileSources.GoogleRoad
-                    else -> TileSourceFactory.MAPNIK
-                }
-            )
+        // Dark mode gets its own provider: same Google tiles, night-transformed
+        // on the loader threads (see NightTiles). Provider and source stay in
+        // sync through the LaunchedEffect below.
+        val initialSource = when {
+            useSatellite -> GoogleTileSources.GoogleSatellite
+            useDarkTiles -> GoogleTileSources.GoogleRoadNight
+            else -> GoogleTileSources.GoogleRoad
+        }
+        val view = if (useDarkTiles) {
+            MapView(context, NightTileProvider(context, initialSource))
+        } else {
+            MapView(context)
+        }
+        view.apply {
+            setTileSource(initialSource)
             setMultiTouchControls(true)
             controller.setZoom(zoom)
             controller.setCenter(center)
@@ -64,13 +76,16 @@ fun RidaMapView(
         }
     }
 
-    // Reflect tile-source toggles without recreating view
-    LaunchedEffect(useGoogleTiles, useSatellite) {
+    // Reflect tile-source toggles without recreating view.
+    // NOTE: on the night provider every source is night-transformed by the
+    // loader, so switching sources here can never leak a bright tile.
+    LaunchedEffect(useGoogleTiles, useSatellite, useDarkTiles) {
         mapView.setTileSource(
             when {
                 useSatellite -> GoogleTileSources.GoogleSatellite
+                useDarkTiles -> GoogleTileSources.GoogleRoadNight
                 useGoogleTiles -> GoogleTileSources.GoogleRoad
-                else -> TileSourceFactory.MAPNIK
+                else -> GoogleTileSources.GoogleRoad
             }
         )
         mapView.invalidate()
@@ -100,7 +115,7 @@ fun RidaMapView(
             val polyline = Polyline().apply {
                 setPoints(routePoints)
                 outlinePaint.apply {
-                    color = AndroidColor.parseColor("#0D5E3A")
+                    color = AndroidColor.parseColor("#43D2A1")
                     strokeWidth = 10f
                     strokeCap = Paint.Cap.ROUND
                     strokeJoin = Paint.Join.ROUND

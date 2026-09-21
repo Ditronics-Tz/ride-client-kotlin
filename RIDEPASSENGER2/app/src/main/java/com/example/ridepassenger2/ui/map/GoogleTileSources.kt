@@ -57,4 +57,20 @@ object GoogleTileSources {
             return baseUrl + MapTileIndex.getX(pTileIndex) + "&y=" + MapTileIndex.getY(pTileIndex) + "&z=" + MapTileIndex.getZoom(pTileIndex)
         }
     }
+
+    // Road map at night — same Google URLs, transformed on-device by NightTiles.
+    // Cached under its own name so night + day tiles never mix.
+    val GoogleRoadNight = object : OnlineTileSourceBase(
+        "GoogleRoadNight", 0, 20, 256, "",
+        arrayOf(
+            "https://mt0.google.com/vt/lyrs=m&x=",
+            "https://mt1.google.com/vt/lyrs=m&x=",
+            "https://mt2.google.com/vt/lyrs=m&x=",
+            "https://mt3.google.com/vt/lyrs=m&x="
+        )
+    ) {
+        override fun getTileURLString(pTileIndex: Long): String {
+            return baseUrl + MapTileIndex.getX(pTileIndex) + "&y=" + MapTileIndex.getY(pTileIndex) + "&z=" + MapTileIndex.getZoom(pTileIndex)
+        }
+    }
 }
