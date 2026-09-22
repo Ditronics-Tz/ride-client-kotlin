@@ -10,13 +10,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ridepassenger2.data.local.SessionManager
+import com.example.ridepassenger2.data.mock.RideRepository
 
 // Dark palette — locked to the home screen
 private val ProfPageBg = Color(0xFF0A0F14)
@@ -46,6 +52,12 @@ private fun ProfileScreenInternal(
     onLogOut: () -> Unit = {}
 ) {
     // Bottom bar is now provided by AppNavGraph Scaffold — do not duplicate here.
+    val context = LocalContext.current
+    val session by SessionManager.observe(context).collectAsState(initial = SessionManager.Session())
+    val trips by RideRepository.history.collectAsState()
+    val displayName = session.name.ifBlank { "Rida Rider" }
+    val initials = displayName.split(" ").filter { it.isNotBlank() }.take(2)
+        .joinToString("") { it.first().uppercase() }.ifBlank { "RR" }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -95,11 +107,11 @@ private fun ProfileScreenInternal(
                         .border(1.5.dp, ProfMint.copy(alpha = 0.4f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "DM", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = ProfTitle)
+                    Text(text = initials, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = ProfTitle)
                 }
                 Spacer(modifier = Modifier.height(10.dp))
-                Text(text = "Dadi Mwenge", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = ProfTitle)
-                Text(text = "@dadi_mwenge", fontSize = 12.sp, color = ProfMuted)
+                Text(text = displayName, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = ProfTitle)
+                Text(text = session.handle.ifBlank { "@rida_rider" }, fontSize = 12.sp, color = ProfMuted)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(text = "Rides. People. A better way.", fontSize = 12.sp, color = ProfMuted)
             }
@@ -116,11 +128,11 @@ private fun ProfileScreenInternal(
                     .padding(vertical = 14.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                StatItem("12", "Rides taken")
+                StatItem(trips.size.toString(), "Rides taken")
                 Box(modifier = Modifier.width(1.dp).height(36.dp).background(ProfBorder))
                 StatItemWithStar("4.8", "Rating")
                 Box(modifier = Modifier.width(1.dp).height(36.dp).background(ProfBorder))
-                StatItem("2", "Rides shared")
+                StatItem(trips.size.toString(), "Rides shared")
             }
 
             Spacer(modifier = Modifier.height(14.dp))

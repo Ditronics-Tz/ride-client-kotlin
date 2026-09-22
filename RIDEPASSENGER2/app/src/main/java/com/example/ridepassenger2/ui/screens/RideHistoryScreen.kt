@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ridepassenger2.data.mock.RideRepository
 
 // Dark palette — locked to the home screen
 private val ActPageBg = Color(0xFF0A0F14)
@@ -53,15 +54,8 @@ private fun RideHistoryScreenInternal(
     onRideClick: (RideHistoryItem) -> Unit = {}
 ) {
     var filter by remember { mutableStateOf("All") }
-    val items = remember {
-        listOf(
-            RideHistoryItem("Kariakoo → Mlimani City", "Today, 8:24 AM • 2 seats shared", "2 seats shared", "You + 1", "TZS 2,500"),
-            RideHistoryItem("Mbezi → Kariakoo", "Yesterday, 5:12 PM • 3 seats shared", "3 seats shared", "You + 2", "TZS 3,800"),
-            RideHistoryItem("Kijitonyama → Mlimani City", "Sep 5, 2025, 7:45 AM • 2 seats shared", "2 seats shared", "You + 1", "TZS 2,200"),
-            RideHistoryItem("Kariakoo → Upanga", "Sep 4, 2025, 6:20 PM • 4 seats shared", "4 seats shared", "You + 3", "TZS 4,500"),
-            RideHistoryItem("Mikocheni → Kariakoo", "Sep 2, 2025, 5:10 PM • 2 seats shared", "2 seats shared", "You + 1", "TZS 2,800")
-        )
-    }
+    // Live history — completed trips land here in real time.
+    val items by RideRepository.history.collectAsState()
 
     // NOTE: Bottom bar is now provided by AppNavGraph Scaffold — do not duplicate here.
     // This screen is the "Activity" tab.

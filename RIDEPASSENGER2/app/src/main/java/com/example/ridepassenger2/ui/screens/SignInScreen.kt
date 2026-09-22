@@ -13,14 +13,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ridepassenger2.data.local.AuthValidation
+import com.example.ridepassenger2.data.local.SessionManager
 import com.example.ridepassenger2.ui.components.*
 import com.example.ridepassenger2.ui.theme.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun SignInScreen(
@@ -33,6 +37,21 @@ fun SignInScreen(
     var password by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(true) }
     var passwordVisible by remember { mutableStateOf(false) }
+    var idError by remember { mutableStateOf<String?>(null) }
+    var pwError by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    fun doSignIn() {
+        idError = AuthValidation.identifierError(identifier)
+        pwError = AuthValidation.passwordError(password)
+        if (idError != null || pwError != null) return
+        val (name, handle) = AuthValidation.displayFor(identifier)
+        scope.launch {
+            if (rememberMe) SessionManager.save(context, name, handle) else SessionManager.clear(context)
+            onSignIn()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -71,18 +90,22 @@ fun SignInScreen(
 
             RidaTextField(
                 value = identifier,
-                onValueChange = { identifier = it },
+                onValueChange = { identifier = it; idError = null },
                 placeholder = "you@example.com or 07XXXXXXXX",
                 label = "Email or Phone Number",
                 leading = { Text(text = "✉", fontSize = 16.sp, color = RidaPlaceholder) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+            )
+            if (idError != null) Text(
+                text = idError!!, fontSize = 12.sp, color = Color(0xFFDC2626),
+                modifier = Modifier.padding(top = 4.dp)
             )
 
             Spacer(modifier = Modifier.height(14.dp))
 
             RidaTextField(
                 value = password,
-                onValueChange = { password = it },
+                onValueChange = { password = it; pwError = null },
                 placeholder = "Enter your password",
                 label = "Password",
                 leading = { Text(text = "🔒", fontSize = 14.sp, color = RidaPlaceholder) },
@@ -99,6 +122,10 @@ fun SignInScreen(
                 },
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+            )
+            if (pwError != null) Text(
+                text = pwError!!, fontSize = 12.sp, color = Color(0xFFDC2626),
+                modifier = Modifier.padding(top = 4.dp)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -185,13 +212,18 @@ fun SignInScreen(
 
             RidaPrimaryDarkButton(
                 text = "Sign In",
-                onClick = onSignIn
+                onClick = { doSignIn() }
             )
 
             Spacer(modifier = Modifier.height(18.dp))
             OrDivider()
             Spacer(modifier = Modifier.height(18.dp))
-            RidaGoogleButton(onClick = onGoogle)
+            RidaGoogleButton(onClick = {
+                scope.launch {
+                    SessionManager.save(context, "Google Rider", "@google")
+                    onGoogle()
+                }
+            })
 
             Spacer(modifier = Modifier.height(80.dp))
         }

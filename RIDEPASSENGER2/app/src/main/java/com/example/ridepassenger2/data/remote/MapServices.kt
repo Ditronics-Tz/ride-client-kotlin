@@ -2,6 +2,8 @@ package com.example.ridepassenger2.data.remote
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -92,6 +94,14 @@ interface OsrmApi {
 // ---------------------------------------------------------------------------
 
 object MapServiceFactory {
+    // Moshi needs the Kotlin adapter: our models are Kotlin data classes and
+    // there is no codegen step, so without this EVERY response throws on parse.
+    private val moshi: Moshi = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
+
+    private fun moshiFactory() = MoshiConverterFactory.create(moshi)
+
     private val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC }
     private val okHttp = OkHttpClient.Builder()
         .addInterceptor(logging)
@@ -109,7 +119,7 @@ object MapServiceFactory {
         Retrofit.Builder()
             .baseUrl("https://nominatim.openstreetmap.org/")
             .client(okHttp)
-            .addConverterFactory(MoshiConverterFactory.create())
+            .addConverterFactory(moshiFactory())
             .build()
             .create(NominatimApi::class.java)
     }
@@ -119,7 +129,7 @@ object MapServiceFactory {
         Retrofit.Builder()
             .baseUrl("https://router.project-osrm.org/")
             .client(okHttp)
-            .addConverterFactory(MoshiConverterFactory.create())
+            .addConverterFactory(moshiFactory())
             .build()
             .create(OsrmApi::class.java)
     }

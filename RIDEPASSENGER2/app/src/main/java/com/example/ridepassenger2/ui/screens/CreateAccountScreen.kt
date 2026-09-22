@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -23,11 +24,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ridepassenger2.data.local.AuthValidation
+import com.example.ridepassenger2.data.local.SessionManager
 import com.example.ridepassenger2.ui.components.HomeIndicator
 import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.components.RidaPrimaryDarkButton
 import com.example.ridepassenger2.ui.components.RidaTextField
 import com.example.ridepassenger2.ui.theme.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun CreateAccountScreen(
@@ -41,6 +45,23 @@ fun CreateAccountScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var nameError by remember { mutableStateOf<String?>(null) }
+    var phoneError by remember { mutableStateOf<String?>(null) }
+    var pwError by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    fun doCreate() {
+        nameError = AuthValidation.nameError(fullName)
+        phoneError = AuthValidation.identifierError(phone)
+        pwError = AuthValidation.passwordError(password)
+        if (nameError != null || phoneError != null || pwError != null) return
+        val handle = email.trim().ifBlank { phone.trim() }
+        scope.launch {
+            SessionManager.save(context, fullName.trim(), handle)
+            onCreateAccount()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -90,23 +111,31 @@ fun CreateAccountScreen(
 
             RidaTextField(
                 value = fullName,
-                onValueChange = { fullName = it },
+                onValueChange = { fullName = it; nameError = null },
                 placeholder = "Your full name",
                 label = "Full Name",
                 leading = { Text(text = "👤", fontSize = 14.sp, color = RidaPlaceholder) },
                 background = RidaInputBg2,
                 borderColor = RidaBorder2
             )
+            if (nameError != null) Text(
+                text = nameError!!, fontSize = 12.sp, color = Color(0xFFDC2626),
+                modifier = Modifier.padding(top = 4.dp)
+            )
             Spacer(modifier = Modifier.height(12.dp))
             RidaTextField(
                 value = phone,
-                onValueChange = { phone = it },
+                onValueChange = { phone = it; phoneError = null },
                 placeholder = "+255 7XX XXX XXX",
                 label = "Phone Number",
                 leading = { Text(text = "📞", fontSize = 14.sp, color = RidaPlaceholder) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 background = RidaInputBg2,
                 borderColor = RidaBorder2
+            )
+            if (phoneError != null) Text(
+                text = phoneError!!, fontSize = 12.sp, color = Color(0xFFDC2626),
+                modifier = Modifier.padding(top = 4.dp)
             )
             Spacer(modifier = Modifier.height(12.dp))
             RidaTextField(
@@ -122,7 +151,7 @@ fun CreateAccountScreen(
             Spacer(modifier = Modifier.height(12.dp))
             RidaTextField(
                 value = password,
-                onValueChange = { password = it },
+                onValueChange = { password = it; pwError = null },
                 placeholder = "Create a password",
                 label = "Password",
                 leading = { Text(text = "🔒", fontSize = 14.sp, color = RidaPlaceholder) },
@@ -142,11 +171,15 @@ fun CreateAccountScreen(
                 background = RidaInputBg2,
                 borderColor = RidaBorder2
             )
+            if (pwError != null) Text(
+                text = pwError!!, fontSize = 12.sp, color = Color(0xFFDC2626),
+                modifier = Modifier.padding(top = 4.dp)
+            )
 
             Spacer(modifier = Modifier.height(22.dp))
             RidaPrimaryDarkButton(
                 text = "Create Account",
-                onClick = onCreateAccount
+                onClick = { doCreate() }
             )
 
             Spacer(modifier = Modifier.height(120.dp)) // space for footer

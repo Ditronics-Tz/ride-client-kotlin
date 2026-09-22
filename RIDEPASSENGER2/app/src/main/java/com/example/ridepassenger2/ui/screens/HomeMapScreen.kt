@@ -37,6 +37,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ridepassenger2.data.mock.ActiveRide
+import com.example.ridepassenger2.data.mock.RidePhase
+import com.example.ridepassenger2.data.mock.RideRepository
 import com.example.ridepassenger2.data.remote.MapServiceFactory
 import com.example.ridepassenger2.data.remote.NominatimPlace
 import com.example.ridepassenger2.data.remote.osrmCoords
@@ -79,9 +82,7 @@ private val DarCenter = GeoPoint(-6.7924, 39.2083)
 @Composable
 fun HomeMapScreen(
     onProfile: () -> Unit = {},
-    onWhereToClick: () -> Unit = {},
-    onRequestRide: () -> Unit = {},
-    onTabShare: () -> Unit = {}
+    onRequestRide: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -104,6 +105,7 @@ fun HomeMapScreen(
     var searchResults by remember { mutableStateOf<List<NominatimPlace>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
     var searchFocused by remember { mutableStateOf(false) }
+    var searchError by remember { mutableStateOf(false) }
 
     val permissionState = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
     val fusedClient = remember { LocationServices.getFusedLocationProviderClient(context) }
@@ -131,30 +133,42 @@ fun HomeMapScreen(
     LaunchedEffect(permissionState.status.isGranted) { if (permissionState.status.isGranted) fetchLocation() }
 
     LaunchedEffect(query) {
-        if (query.trim().length < 2) { searchResults = emptyList(); isSearching = false; return@LaunchedEffect }
+        if (query.trim().length < 2) { searchResults = emptyList(); isSearching = false; searchError = false; return@LaunchedEffect }
         delay(520)
         isSearching = true
+        searchError = false
         try {
             val q = if (query.contains(",")) query else "$query, Dar es Salaam"
             searchResults = MapServiceFactory.nominatim.search(query = q, limit = 6)
-        } catch (_: Exception) { searchResults = emptyList() } finally { isSearching = false }
+        } catch (_: Exception) { searchResults = emptyList(); searchError = true } finally { isSearching = false }
     }
 
+    // Road-following mint route (OSRM fastest). Falls back to the map center
+    // as origin so a route still draws before the GPS fix lands.
     LaunchedEffect(destination, currentLocation) {
-        val dest = destination; val origin = currentLocation
-        if (dest != null && origin != null) {
-            try {
-                val coords = osrmCoords(origin.longitude, origin.latitude, dest.longitude, dest.latitude)
-                val resp = MapServiceFactory.osrm.route(coords = coords)
-                val route = resp.routes.firstOrNull()
-                if (route != null) {
-                    routePoints = route.geometry.coordinates.map { (lon, lat) -> GeoPoint(lat, lon) }
-                    routeDistanceM = route.distance; routeDurationS = route.duration
-                    mapCenter = GeoPoint((origin.latitude + dest.latitude) / 2, (origin.longitude + dest.longitude) / 2)
-                    mapZoom = when { route.distance < 3000 -> 15.0; route.distance < 8000 -> 13.8; route.distance < 15000 -> 12.8; else -> 11.5 }
-                }
-            } catch (_: Exception) { routePoints = emptyList() }
-        } else if (dest == null) { routePoints = emptyList(); routeDistanceM = null; routeDurationS = null }
+        val dest = destination
+        if (dest == null) {
+            routePoints = emptyList(); routeDistanceM = null; routeDurationS = null
+            return@LaunchedEffect
+        }
+        val origin = currentLocation ?: mapCenter
+        try {
+            val coords = osrmCoords(origin.longitude, origin.latitude, dest.longitude, dest.latitude)
+            val resp = MapServiceFactory.osrm.route(coords = coords)
+            val route = resp.routes.firstOrNull()
+            if (route != null && route.geometry.coordinates.size >= 2) {
+                routePoints = route.geometry.coordinates.map { (lon, lat) -> GeoPoint(lat, lon) }
+                routeDistanceM = route.distance; routeDurationS = route.duration
+                mapCenter = GeoPoint((origin.latitude + dest.latitude) / 2, (origin.longitude + dest.longitude) / 2)
+                mapZoom = when { route.distance < 3000 -> 15.0; route.distance < 8000 -> 13.8; route.distance < 15000 -> 12.8; else -> 11.5 }
+            } else {
+                routePoints = emptyList()
+                Toast.makeText(context, "No road route found to that pin", Toast.LENGTH_SHORT).show()
+            }
+        } catch (_: Exception) {
+            routePoints = emptyList()
+            Toast.makeText(context, "Couldn't calculate the route — check connection", Toast.LENGTH_SHORT).show()
+        }
     }
 
     val driverPins = remember(mapCenter) {
@@ -171,6 +185,70 @@ fun HomeMapScreen(
         val distKm = (routeDistanceM ?: 4500.0) / 1000.0
         val fare = 2500 + (distKm * 450).toInt()
         "TZS ${"%,d".format(fare)}"
+    }
+
+    // ---- Live mock ride ----
+    val activeRide by RideRepository.activeRide.collectAsState()
+    val justCompleted by RideRepository.lastCompleted.collectAsState()
+    var driverPin by remember { mutableStateOf<GeoPoint?>(null) }
+    val busy = activeRide != null
+
+    fun lerp(a: GeoPoint, b: GeoPoint, t: Double) = GeoPoint(
+        a.latitude + (b.latitude - a.latitude) * t,
+        a.longitude + (b.longitude - a.longitude) * t
+    )
+
+    // Driver movement + phase advancement (mock GPS, ticks every ~2s)
+    LaunchedEffect(activeRide?.phase) {
+        val phase = activeRide?.phase ?: run { driverPin = null; return@LaunchedEffect }
+        val pickup = currentLocation ?: return@LaunchedEffect
+        when (phase) {
+            RidePhase.DRIVER_FOUND -> {
+                var pos = GeoPoint(pickup.latitude + 0.012, pickup.longitude + 0.012)
+                driverPin = pos
+                repeat(6) {
+                    delay(2000)
+                    if (RideRepository.activeRide.value?.phase != RidePhase.DRIVER_FOUND) return@LaunchedEffect
+                    pos = lerp(pos, pickup, 0.25)
+                    driverPin = pos
+                }
+                RideRepository.markArriving()
+            }
+            RidePhase.ARRIVING -> {
+                repeat(3) {
+                    delay(2000)
+                    if (RideRepository.activeRide.value?.phase != RidePhase.ARRIVING) return@LaunchedEffect
+                }
+                RideRepository.markInTrip()
+                onRequestRide()
+            }
+            RidePhase.IN_TRIP -> {
+                val pts = routePoints
+                if (pts.size >= 2) {
+                    val step = (pts.size / 6).coerceAtLeast(1)
+                    var i = 0
+                    while (i < pts.size) {
+                        delay(2000)
+                        if (RideRepository.activeRide.value?.phase != RidePhase.IN_TRIP) return@LaunchedEffect
+                        driverPin = pts[i]
+                        i += step
+                    }
+                } else {
+                    delay(10000)
+                    if (RideRepository.activeRide.value?.phase != RidePhase.IN_TRIP) return@LaunchedEffect
+                }
+                RideRepository.completeRide()
+            }
+            else -> Unit
+        }
+    }
+
+    // Completion toast (fires when returning from the ride screen too)
+    LaunchedEffect(justCompleted) {
+        justCompleted?.let {
+            Toast.makeText(context, "Trip completed • ${it.price} • saved to Activity", Toast.LENGTH_LONG).show()
+            RideRepository.consumeCompleted()
+        }
     }
 
     val sheetState = rememberBottomSheetScaffoldState(
@@ -211,7 +289,7 @@ fun HomeMapScreen(
                                 .border(1.dp, if (active) MintSoft else Mint.copy(alpha = 0.35f), RoundedCornerShape(999.dp))
                                 .clickable {
                                     when (label) {
-                                        "Share" -> { selectedTab = label; onTabShare() }
+                                        "Share" -> { selectedTab = label }
                                         "Schedule", "Package" -> Toast.makeText(context, "$label coming soon", Toast.LENGTH_SHORT).show()
                                         else -> selectedTab = label
                                     }
@@ -297,6 +375,21 @@ fun HomeMapScreen(
                     }
                     Spacer(modifier = Modifier.height(14.dp))
 
+                    // Live ride status replaces the options while a ride is active
+                    val ride = activeRide
+                    if (ride == null) {
+                    if (selectedTab == "Share") {
+                        SharedRidesSection { item ->
+                            driverPin = null
+                            RideRepository.requestRide(
+                                pickup = "Your location",
+                                destination = destinationLabel ?: "Destination",
+                                price = item.price,
+                                option = "Shared",
+                                etaMin = routeDurationS?.div(60)?.toInt() ?: 10
+                            )
+                        }
+                    } else {
                     // Choose a ride
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -344,10 +437,27 @@ fun HomeMapScreen(
                             .shadow(6.dp, RoundedCornerShape(16.dp), ambientColor = Mint.copy(alpha = 0.30f))
                             .clip(RoundedCornerShape(16.dp))
                             .background(MintSoft)
-                            .clickable(onClick = onRequestRide),
+                            .clickable(onClick = {
+                                driverPin = null
+                                RideRepository.requestRide(
+                                    pickup = "Your location",
+                                    destination = destinationLabel ?: "Destination",
+                                    price = priceText,
+                                    option = selectedOption,
+                                    etaMin = routeDurationS?.div(60)?.toInt() ?: 10
+                                )
+                            }),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(text = "Request Ride", color = OnMintDark, fontWeight = FontWeight.Bold, fontSize = 14.5.sp)
+                    }
+                    }
+                    } else {
+                        RideStatusCard(
+                            phase = ride.phase,
+                            ride = ride,
+                            onCancel = { driverPin = null; RideRepository.cancelRide() }
+                        )
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
@@ -366,7 +476,7 @@ fun HomeMapScreen(
                     currentLocation = currentLocation,
                     destination = destination,
                     routePoints = routePoints,
-                    driverLocations = driverPins,
+                    driverLocations = if (driverPin != null && busy) listOf(driverPin!!) else driverPins,
                     enableMyLocation = permissionState.status.isGranted
                 )
 
@@ -441,14 +551,17 @@ fun HomeMapScreen(
                     }
 
                     // Nominatim results — dark dropdown under the search card
-                    AnimatedVisibility(visible = searchFocused && (isSearching || searchResults.isNotEmpty())) {
+                    AnimatedVisibility(visible = searchFocused && (isSearching || searchError || searchResults.isNotEmpty())) {
                         Box(modifier = Modifier.padding(top = 8.dp).fillMaxWidth().shadow(8.dp, RoundedCornerShape(16.dp)).clip(RoundedCornerShape(16.dp)).background(DarkCardBg2).border(1.dp, DarkBorder, RoundedCornerShape(16.dp))) {
                             if (isSearching) Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Mint)
                                 Text(text = "Searching Nominatim…", fontSize = 12.sp, color = DarkMuted)
+                            } else if (searchError) Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(text = "⚠", fontSize = 14.sp)
+                                Text(text = "Couldn't search — check your connection and retry", fontSize = 12.sp, color = DarkMuted)
                             } else LazyColumn(modifier = Modifier.heightIn(max = 220.dp)) {
                                 items(searchResults) { place ->
-                                    Row(modifier = Modifier.fillMaxWidth().clickable { val gp = GeoPoint(place.lat.toDouble(), place.lon.toDouble()); destination = gp; destinationLabel = place.displayName.substringBefore(","); query = place.displayName.substringBefore(","); searchFocused = false; searchResults = emptyList(); keyboardController?.hide(); onWhereToClick() }.padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Row(modifier = Modifier.fillMaxWidth().clickable { val gp = GeoPoint(place.lat.toDouble(), place.lon.toDouble()); destination = gp; destinationLabel = place.displayName.substringBefore(","); query = place.displayName.substringBefore(","); searchFocused = false; searchResults = emptyList(); keyboardController?.hide() }.padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                         Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(DarkPill), contentAlignment = Alignment.Center) { Text(text = "📍", fontSize = 12.sp) }
                                         Column(modifier = Modifier.weight(1f)) { Text(text = place.displayName.substringBefore(","), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = DarkTitle); Text(text = place.displayName, fontSize = 11.sp, color = DarkMuted, maxLines = 1) }
                                     }
@@ -498,6 +611,161 @@ fun HomeMapScreen(
 // ---------------------------------------------------------------------------
 // Dark helpers
 // ---------------------------------------------------------------------------
+data class ShareRideItem(val time: String, val seatsTaken: Int, val price: String, val full: Boolean = false)
+
+@Composable
+private fun SharedRidesSection(onJoin: (ShareRideItem) -> Unit) {
+    val rides = remember {
+        listOf(
+            ShareRideItem("10:15 AM", 2, "TZS 2,500"),
+            ShareRideItem("11:00 AM", 1, "TZS 2,800"),
+            ShareRideItem("12:30 PM", 3, "TZS 2,400", full = true),
+            ShareRideItem("2:00 PM", 1, "TZS 2,600")
+        )
+    }
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(22.dp).clip(CircleShape).background(Mint.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) { Text(text = "👥", fontSize = 11.sp) }
+            Text(text = "Shared rides", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = DarkTitle)
+        }
+        Box(modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(DarkPill).padding(horizontal = 8.dp, vertical = 4.dp)) {
+            Text(text = "Split the cost", fontSize = 11.sp, color = DarkMuted, fontWeight = FontWeight.Medium)
+        }
+    }
+    Spacer(modifier = Modifier.height(10.dp))
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        rides.forEach { item ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(DarkCardBg)
+                    .border(1.dp, DarkBorder, RoundedCornerShape(16.dp))
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(DarkPill)
+                            .border(1.dp, DarkBorder, RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "🚗", fontSize = 18.sp)
+                    }
+                    Column {
+                        Text(text = item.time, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = DarkTitle)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 2.dp)) {
+                            Text(text = "👤", fontSize = 10.sp)
+                            Text(text = "${item.seatsTaken}/3 seats", fontSize = 11.sp, color = DarkMuted)
+                        }
+                        Text(text = item.price, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = DarkTitle, modifier = Modifier.padding(top = 2.dp))
+                    }
+                }
+                if (item.full) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(DarkPill)
+                            .border(1.dp, DarkBorder, RoundedCornerShape(999.dp))
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text(text = "Full", fontSize = 12.sp, color = DarkMuted)
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(MintSoft)
+                            .clickable(onClick = { onJoin(item) })
+                            .padding(horizontal = 18.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "Join", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = OnMintDark)
+                    }
+                }
+            }
+        }
+    }
+    Spacer(modifier = Modifier.height(10.dp))
+}
+
+@Composable
+private fun RideStatusCard(phase: RidePhase, ride: ActiveRide, onCancel: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(DarkCardBg)
+            .border(1.6.dp, Mint.copy(alpha = 0.35f), RoundedCornerShape(18.dp))
+            .padding(14.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            when (phase) {
+                RidePhase.SEARCHING -> {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        CircularProgressIndicator(modifier = Modifier.size(26.dp), strokeWidth = 3.dp, color = Mint)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = "Finding your driver…", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = DarkTitle)
+                            Text(text = "Usually under a minute", fontSize = 11.5.sp, color = DarkMuted)
+                        }
+                    }
+                }
+                RidePhase.DRIVER_FOUND, RidePhase.ARRIVING -> {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(Mint.copy(alpha = 0.14f)).border(1.dp, Mint.copy(alpha = 0.25f), CircleShape), contentAlignment = Alignment.Center) {
+                            Text(text = ride.driver?.name?.firstOrNull()?.toString() ?: "D", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Mint)
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (phase == RidePhase.ARRIVING) "Driver arriving now" else "Driver found!",
+                                fontSize = 14.sp, fontWeight = FontWeight.Bold, color = DarkTitle
+                            )
+                            Text(
+                                text = "${ride.driver?.name ?: ""} ★ ${ride.driver?.rating ?: ""}",
+                                fontSize = 12.sp, color = DarkBody, fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "${ride.driver?.car ?: ""} • ${ride.driver?.plate ?: ""}",
+                                fontSize = 11.sp, color = DarkMuted
+                            )
+                        }
+                        Box(modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(Mint.copy(alpha = 0.14f)).padding(horizontal = 8.dp, vertical = 4.dp)) {
+                            Text(text = "${ride.etaMin} min", fontSize = 11.sp, color = Mint, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+                RidePhase.IN_TRIP -> {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(Mint), contentAlignment = Alignment.Center) {
+                            Text(text = "→", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = OnMintDark)
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = "You're on your way", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = DarkTitle)
+                            Text(text = "Heading to ${ride.destination}", fontSize = 11.5.sp, color = DarkMuted)
+                        }
+                    }
+                }
+                else -> Unit
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
+                    .clickable(onClick = onCancel)
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = "Cancel ride", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = DarkMuted)
+            }
+        }
+    }
+}
+
 @Composable
 private fun TrustItem(value: String, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {

@@ -66,12 +66,14 @@ dependencies {
     implementation(libs.retrofit.moshi)
     implementation(libs.moshi)
     implementation(libs.moshi.kotlin)
+    implementation(libs.kotlin.reflect)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
     // Location (Geolocator equivalent)
     implementation(libs.play.services.location)
     implementation(libs.accompanist.permissions)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.datastore.preferences)
 
     debugImplementation(libs.androidx.ui.tooling)
 

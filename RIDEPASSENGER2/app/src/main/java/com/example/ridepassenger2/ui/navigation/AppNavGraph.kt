@@ -6,14 +6,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.ridepassenger2.data.local.SessionManager
 import com.example.ridepassenger2.ui.components.RidaBottomBar
 import com.example.ridepassenger2.ui.screens.*
+import kotlinx.coroutines.launch
 
 object Routes {
     const val ONBOARDING = "onboarding"
@@ -22,7 +26,6 @@ object Routes {
     const val FORGOT_PASSWORD = "forgot_password"
     const val HOME_MAP = "home_map"
     const val RIDE_DETAILS = "ride_details"
-    const val SHARE_RIDE = "share_ride"
     const val RIDE_HISTORY = "ride_history"
     // Alias: Activity is the user-facing name for ride history
     const val ACTIVITY = RIDE_HISTORY
@@ -41,6 +44,17 @@ fun AppNavGraph(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val showBottomBar = currentRoute in BottomBarRoutes
+    val context = LocalContext.current
+    val ioScope = rememberCoroutineScope()
+
+    fun logOut() {
+        ioScope.launch {
+            try { SessionManager.clear(context) } catch (_: Exception) { }
+            navController.navigate(Routes.SIGN_IN) {
+                popUpTo(Routes.HOME_MAP) { inclusive = true }
+            }
+        }
+    }
 
     val selectedTab = when (currentRoute) {
         Routes.HOME_MAP -> "Home"
@@ -122,8 +136,8 @@ fun AppNavGraph(
                     CreateAccountScreen(
                         onBack = { navController.popBackStack() },
                         onCreateAccount = {
-                            navController.navigate(Routes.SIGN_IN) {
-                                popUpTo(Routes.ONBOARDING) { inclusive = false }
+                            navController.navigate(Routes.HOME_MAP) {
+                                popUpTo(Routes.ONBOARDING) { inclusive = true }
                             }
                         }
                     )
@@ -142,21 +156,13 @@ fun AppNavGraph(
                 composable(Routes.HOME_MAP) {
                     HomeMapScreen(
                         onProfile = { navigateBottomBar(Routes.PROFILE) },
-                        onWhereToClick = { navController.navigate(Routes.SHARE_RIDE) },
-                        onRequestRide = { navController.navigate(Routes.RIDE_DETAILS) },
-                        onTabShare = { navController.navigate(Routes.SHARE_RIDE) }
+                        onRequestRide = { navController.navigate(Routes.RIDE_DETAILS) }
                     )
                 }
                 composable(Routes.RIDE_DETAILS) {
                     RideDetailsScreen(
                         onBack = { navController.popBackStack() },
                         onCancel = { navController.popBackStack() }
-                    )
-                }
-                composable(Routes.SHARE_RIDE) {
-                    ShareRideScreen(
-                        onBack = { navController.popBackStack() },
-                        onJoin = { navController.navigate(Routes.RIDE_DETAILS) }
                     )
                 }
                 composable(Routes.RIDE_HISTORY) {
@@ -168,21 +174,13 @@ fun AppNavGraph(
                     ProfileScreen(
                         onSettings = { navController.navigate(Routes.SETTINGS) },
                         onMenuClick = { navController.navigate(Routes.SETTINGS) },
-                        onLogOut = {
-                            navController.navigate(Routes.SIGN_IN) {
-                                popUpTo(Routes.HOME_MAP) { inclusive = true }
-                            }
-                        }
+                        onLogOut = { logOut() }
                     )
                 }
                 composable(Routes.SETTINGS) {
                     SettingsScreen(
                         onBack = { navController.popBackStack() },
-                        onLogOut = {
-                            navController.navigate(Routes.SIGN_IN) {
-                                popUpTo(Routes.HOME_MAP) { inclusive = true }
-                            }
-                        }
+                        onLogOut = { logOut() }
                     )
                 }
             }

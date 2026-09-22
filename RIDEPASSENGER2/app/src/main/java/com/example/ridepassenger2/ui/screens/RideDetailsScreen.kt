@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,6 +23,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ridepassenger2.data.mock.RideRepository
 import com.example.ridepassenger2.ui.components.HomeIndicator
 
 private val DetailsBg = Color(0xFF0C1014)
@@ -34,6 +37,7 @@ fun RideDetailsScreen(
     onBack: () -> Unit = {},
     onCancel: () -> Unit = {}
 ) {
+    val liveRide by RideRepository.activeRide.collectAsState()
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -97,8 +101,8 @@ fun RideDetailsScreen(
                         Text(text = "🚗", fontSize = 20.sp)
                     }
                     Column {
-                        Text(text = "Standard", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                        Text(text = "Shared ride • 1-4 seats", color = Color(0xFF7B8893), fontSize = 12.sp)
+                        Text(text = liveRide?.option ?: "Standard", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text(text = liveRide?.driver?.let { "${it.name} ★ ${it.rating} • ${it.car}" } ?: "Shared ride • 1-4 seats", color = Color(0xFF7B8893), fontSize = 12.sp)
                     }
                 }
 
@@ -110,12 +114,12 @@ fun RideDetailsScreen(
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(text = "◷", color = Color(0xFF8695A2), fontSize = 14.sp)
-                            Text(text = "12 min", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            Text(text = liveRide?.let { "${it.etaMin} min" } ?: "12 min", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                         }
                         Text(text = "Pickup time", color = Color(0xFF6B7884), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
                     }
                     Column {
-                        Text(text = "TZS 2,500", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        Text(text = liveRide?.price ?: "TZS 2,500", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                         Text(text = "Total fare", color = Color(0xFF6B7884), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
                     }
                     Column {
@@ -187,7 +191,7 @@ fun RideDetailsScreen(
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0xFF161C22))
                         .border(1.dp, Color(0xFF232D36), RoundedCornerShape(12.dp))
-                        .clickable(onClick = onCancel),
+                        .clickable(onClick = { RideRepository.cancelRide(); onCancel() }),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(text = "Cancel Ride", color = Color.White, fontWeight = FontWeight.Medium, fontSize = 14.sp)
