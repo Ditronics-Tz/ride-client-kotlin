@@ -162,6 +162,18 @@ fun SettingsScreen(
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
+                // Build identity stamp — proves on-device which build is installed.
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Rida passenger • v1.0 alive (Oct 2026)",
+                        fontSize = 11.sp,
+                        color = Color(0xFF9CA3AF)
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
 
