@@ -416,6 +416,7 @@ fun PackageRideScreen(onBack: () -> Unit = {}, onSent: () -> Unit = {}) {
                         Toast.makeText(context, "Enter a drop-off first", Toast.LENGTH_SHORT).show(); return@clickable
                     }
                     if (phoneError != null) return@clickable
+                    RideRepository.clearRoute() // no road route for parcels — engine skips GPS animation
                     RideRepository.requestRide(pickup.ifBlank { "Your location" }, dropoff, price, "Package • $size", 12)
                     Toast.makeText(context, "Courier requested • $price", Toast.LENGTH_LONG).show()
                     onSent()

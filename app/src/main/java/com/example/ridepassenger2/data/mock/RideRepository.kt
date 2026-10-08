@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.osmdroid.util.GeoPoint
 
 /**
  * Mock backend (frontend-only mode): drivers, live ride state machine and
@@ -69,6 +70,41 @@ object RideRepository {
         _selectedHistory.value = item
     }
 
+    /**
+     * Live geography for the active ride: OSRM route + endpoints saved by Home
+     * when the road route is calculated. Details screen renders this — no fake map.
+     */
+    data class RouteSnapshot(
+        val origin: GeoPoint,
+        val destination: GeoPoint,
+        val destinationLabel: String,
+        val points: List<GeoPoint> = emptyList(),
+        val distanceM: Double? = null,
+        val durationS: Double? = null
+    )
+
+    private val _routeSnapshot = MutableStateFlow<RouteSnapshot?>(null)
+    val routeSnapshot: StateFlow<RouteSnapshot?> = _routeSnapshot.asStateFlow()
+
+    fun saveRoute(
+        origin: GeoPoint,
+        destination: GeoPoint,
+        destinationLabel: String,
+        points: List<GeoPoint> = emptyList(),
+        distanceM: Double? = null,
+        durationS: Double? = null
+    ) {
+        _routeSnapshot.value = RouteSnapshot(origin, destination, destinationLabel, points, distanceM, durationS)
+    }
+
+    fun clearRoute() {
+        _routeSnapshot.value = null
+    }
+
+    /** Mock GPS: driver position, driven by the engine below. Any screen can observe. */
+    private val _driverPin = MutableStateFlow<GeoPoint?>(null)
+    val driverPin: StateFlow<GeoPoint?> = _driverPin.asStateFlow()
+
     data class ScheduledRide(
         val id: Long = System.currentTimeMillis(),
         val pickup: String,
@@ -122,15 +158,69 @@ object RideRepository {
             option = option,
             etaMin = etaMin
         )
+        _driverPin.value = null
+        runEngine()
+    }
+
+    /**
+     * Simulation engine — runs in the repo scope so EVERY screen stays live.
+     * (Previously this ticked inside Home's composition and froze on Details.)
+     * Manual actions (markInTrip/completeRide/cancelRide) just fast-forward it;
+     * every step re-checks the phase and bails out when the user intervenes.
+     */
+    private fun runEngine() {
         scope.launch {
             delay(4500)
             val current = _activeRide.value
-            if (current != null && current.phase == RidePhase.SEARCHING) {
-                _activeRide.value = current.copy(
-                    phase = RidePhase.DRIVER_FOUND,
-                    driver = drivers.random()
-                )
+            if (current == null || current.phase != RidePhase.SEARCHING) return@launch
+            _activeRide.value = current.copy(
+                phase = RidePhase.DRIVER_FOUND,
+                driver = drivers.random()
+            )
+
+            // Drive toward pickup (mock GPS). No snapshot (e.g. Package) → skip to arriving.
+            val pickup = _routeSnapshot.value?.origin
+            if (pickup != null) {
+                var pos = GeoPoint(pickup.latitude + 0.012, pickup.longitude + 0.012)
+                _driverPin.value = pos
+                repeat(6) {
+                    delay(2000)
+                    if (_activeRide.value?.phase != RidePhase.DRIVER_FOUND) return@launch
+                    pos = GeoPoint(
+                        pos.latitude + (pickup.latitude - pos.latitude) * 0.25,
+                        pos.longitude + (pickup.longitude - pos.longitude) * 0.25
+                    )
+                    _driverPin.value = pos
+                }
+            } else {
+                delay(6000)
+                if (_activeRide.value?.phase != RidePhase.DRIVER_FOUND) return@launch
             }
+            markArriving()
+
+            repeat(3) {
+                delay(2000)
+                if (_activeRide.value?.phase != RidePhase.ARRIVING) return@launch
+            }
+            // Auto-start the trip only if the rider hasn't already (Details has a button).
+            if (_activeRide.value?.phase == RidePhase.ARRIVING) markInTrip()
+
+            // Follow the road route, then finish.
+            val pts = _routeSnapshot.value?.points.orEmpty()
+            if (pts.size >= 2) {
+                val step = (pts.size / 6).coerceAtLeast(1)
+                var i = 0
+                while (i < pts.size) {
+                    delay(2000)
+                    if (_activeRide.value?.phase != RidePhase.IN_TRIP) return@launch
+                    _driverPin.value = pts[i]
+                    i += step
+                }
+            } else {
+                delay(10000)
+                if (_activeRide.value?.phase != RidePhase.IN_TRIP) return@launch
+            }
+            completeRide()
         }
     }
 
@@ -162,10 +252,12 @@ object RideRepository {
         _history.value = listOf(record) + _history.value
         _lastCompleted.value = record
         _activeRide.value = null
+        _driverPin.value = null
     }
 
     fun cancelRide() {
         _activeRide.value = null
+        _driverPin.value = null
     }
 
     fun consumeCompleted() {

@@ -1,31 +1,28 @@
 package com.example.ridepassenger2.ui.screens
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.core.net.toUri
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ridepassenger2.data.mock.RidePhase
 import com.example.ridepassenger2.data.mock.RideRepository
+import com.example.ridepassenger2.data.remote.MapServiceFactory
 import com.example.ridepassenger2.ui.components.HomeIndicator
+import com.example.ridepassenger2.ui.map.RidaMapView
+import org.osmdroid.util.GeoPoint
 
 private val DetailsBg = Color(0xFF0C1014)
 private val SheetBg = Color(0xFF101418)
@@ -40,27 +37,71 @@ fun RideDetailsScreen(
 ) {
     val liveRide by RideRepository.activeRide.collectAsState()
     val selected by RideRepository.selectedHistory.collectAsState()
+    val justCompleted by RideRepository.lastCompleted.collectAsState()
+    val snapshot by RideRepository.routeSnapshot.collectAsState()
+    val driverPin by RideRepository.driverPin.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
-    // History fallback: when opened from Activity, show that trip instead of mock Kariakoo/Mwenge.
+    // Precedence: live ride → just-completed receipt → tapped history → empty.
+    val receipt = if (liveRide == null) justCompleted else null
+    // History fallback: when opened from Activity, show that trip.
     val histParts = selected?.route?.split("→")?.map { it.trim() }.orEmpty()
-    val showTitle = liveRide?.option ?: selected?.seatsShared ?: "Standard"
+    val showTitle = liveRide?.option ?: receipt?.seatsShared ?: selected?.seatsShared ?: "Standard"
     val showSubtitle = liveRide?.driver?.let { "${it.name} ★ ${it.rating} • ${it.car}" }
+        ?: receipt?.let { "${it.date} • ${it.people}" }
         ?: selected?.let { "${it.date} • ${it.people}" } ?: "Shared ride • 1-4 seats"
-    val showPrice = liveRide?.price ?: selected?.price ?: "TZS 2,500"
+    val showPrice = liveRide?.price ?: receipt?.price ?: selected?.price ?: "TZS 2,500"
     val showEta = liveRide?.let { "${it.etaMin} min" } ?: "12 min"
-    val pickupLabel = liveRide?.pickup ?: histParts.getOrNull(0)?.ifBlank { "Kariakoo" } ?: "Kariakoo"
-    val dropoffLabel = liveRide?.destination ?: histParts.getOrNull(1)?.ifBlank { "Mwenge" } ?: "Mwenge"
+    val pickupLabel = liveRide?.pickup
+        ?: receipt?.route?.substringBefore("→")?.trim().orEmpty().ifBlank { "Your location" }
+        ?: histParts.getOrNull(0)?.ifBlank { "Kariakoo" } ?: "Kariakoo"
+    val dropoffLabel = liveRide?.destination
+        ?: receipt?.route?.substringAfter("→")?.trim().orEmpty().ifBlank { "Destination" }
+        ?: histParts.getOrNull(1)?.ifBlank { "Mwenge" } ?: "Mwenge"
+
+    // History has no coordinates — geocode the drop-off once so its map is real.
+    var histDest by remember(selected) { mutableStateOf<GeoPoint?>(null) }
+    LaunchedEffect(selected) {
+        histDest = null
+        val target = if (liveRide == null && receipt == null) selected else null
+        if (target != null) {
+            try {
+                val q = target.route.substringAfter("→").trim().ifBlank { target.route }
+                val places = MapServiceFactory.nominatim.search(query = "$q, Dar es Salaam", limit = 1)
+                places.firstOrNull()?.let { histDest = GeoPoint(it.lat.toDouble(), it.lon.toDouble()) }
+            } catch (_: Exception) { }
+        }
+    }
+
+    // Live map inputs: snapshot route for live/receipt, geocoded pin for history.
+    val useSnapshot = (liveRide != null || receipt != null) && snapshot != null
+    val mapCenter = when {
+        useSnapshot -> GeoPoint(
+            (snapshot!!.origin.latitude + snapshot!!.destination.latitude) / 2,
+            (snapshot!!.origin.longitude + snapshot!!.destination.longitude) / 2
+        )
+        histDest != null -> histDest!!
+        else -> GeoPoint(-6.7924, 39.2083)
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(DetailsBg)
     ) {
-        // Map
-        RideRouteMap(
+        // Live map — OSRM road route + moving driver pin, Bolt-style night tiles.
+        RidaMapView(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(300.dp)
-                .align(Alignment.TopCenter)
+                .align(Alignment.TopCenter),
+            center = mapCenter,
+            zoom = if (useSnapshot && (snapshot!!.distanceM ?: 9999.0) < 3000) 15.0 else 13.5,
+            useGoogleTiles = false,
+            useSatellite = false,
+            useDarkTiles = true,
+            currentLocation = snapshot?.origin,
+            destination = if (useSnapshot) snapshot!!.destination else histDest,
+            routePoints = if (useSnapshot) snapshot!!.points else emptyList(),
+            driverLocations = listOfNotNull(if (liveRide != null) driverPin else null)
         )
 
         // Top bar
@@ -115,6 +156,87 @@ fun RideDetailsScreen(
                     Column {
                         Text(text = showTitle, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                         Text(text = showSubtitle, color = Color(0xFF7B8893), fontSize = 12.sp)
+                    }
+                }
+
+                // Live phase banner — the trip's heartbeat. Actions fast-forward the engine.
+                val phase = liveRide?.phase
+                if (phase != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    when (phase) {
+                        RidePhase.SEARCHING -> {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                                    .background(Color(0xFF141B20)).border(1.dp, Color(0xFF1E2730), RoundedCornerShape(14.dp))
+                                    .padding(13.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 3.dp, color = MintRoute)
+                                Column {
+                                    Text(text = "Finding your driver…", color = Color.White, fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
+                                    Text(text = "Usually under a minute", color = Color(0xFF6E7B86), fontSize = 11.5.sp)
+                                }
+                            }
+                        }
+                        RidePhase.DRIVER_FOUND -> {
+                            PhaseBanner(
+                                dot = MintDot,
+                                title = "Driver found — heading to pickup",
+                                subtitle = liveRide?.driver?.let { "${it.plate} • arriving in ~${liveRide?.etaMin} min" } ?: ""
+                            )
+                        }
+                        RidePhase.ARRIVING -> {
+                            PhaseBanner(
+                                dot = MintDot,
+                                title = "Driver arriving now",
+                                subtitle = "Meet at $pickupLabel • ${liveRide?.driver?.plate ?: ""}"
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Box(
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                                    .background(MintRoute)
+                                    .clickable(onClick = { RideRepository.markInTrip() })
+                                    .padding(vertical = 13.dp),
+                                contentAlignment = Alignment.Center
+                            ) { Text(text = "I'm in — start trip", color = Color(0xFF0C1014), fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+                        }
+                        RidePhase.IN_TRIP -> {
+                            PhaseBanner(
+                                dot = MintRoute,
+                                title = "You're on your way",
+                                subtitle = "Heading to $dropoffLabel"
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Box(
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                                    .background(MintRoute)
+                                    .clickable(onClick = { RideRepository.completeRide() })
+                                    .padding(vertical = 13.dp),
+                                contentAlignment = Alignment.Center
+                            ) { Text(text = "Complete trip • $showPrice", color = Color(0xFF0C1014), fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+                        }
+                        else -> Unit
+                    }
+                }
+
+                // Receipt banner for a just-finished trip.
+                if (receipt != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                            .background(Color(0xFF0F2A1F)).border(1.dp, MintRoute.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
+                            .padding(13.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(MintRoute), contentAlignment = Alignment.Center) {
+                            Text(text = "✓", color = Color(0xFF0C1014), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Column {
+                            Text(text = "Trip completed • $showPrice", color = Color.White, fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
+                            Text(text = "Saved to Activity. Asante for riding Rida!", color = Color(0xFF6E7B86), fontSize = 11.5.sp)
+                        }
                     }
                 }
 
@@ -245,7 +367,38 @@ fun RideDetailsScreen(
                     ) {
                         Text(text = "Cancel Ride", color = Color.White, fontWeight = FontWeight.Medium, fontSize = 14.sp)
                     }
-                } else {
+                } else if (receipt != null) {
+                    // Receipt: ride again re-requests the same route, Done files it away.
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MintRoute)
+                            .clickable(onClick = {
+                                RideRepository.consumeCompleted()
+                                RideRepository.selectHistory(null)
+                                RideRepository.requestRide(pickupLabel, dropoffLabel, showPrice, showTitle, 10)
+                                onCancel()
+                            }),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "Ride again • $showPrice", color = Color(0xFF0C1014), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF161C22))
+                            .border(1.dp, Color(0xFF232D36), RoundedCornerShape(12.dp))
+                            .clickable(onClick = { RideRepository.consumeCompleted(); RideRepository.selectHistory(null); onCancel() }),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "Done", color = Color.White, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                    }
+                } else if (selected != null) {
                     // History view: Book again re-requests the same route, Close clears selection.
                     Box(
                         modifier = Modifier
@@ -255,6 +408,9 @@ fun RideDetailsScreen(
                             .background(MintRoute)
                             .clickable(onClick = {
                                 RideRepository.selectHistory(null)
+                                // No coordinates for old history rows — drop any stale
+                                // route so the engine + map don't show the wrong trip.
+                                RideRepository.clearRoute()
                                 RideRepository.requestRide(pickupLabel, dropoffLabel, showPrice, showTitle, 10)
                                 onCancel()
                             }),
@@ -275,6 +431,19 @@ fun RideDetailsScreen(
                     ) {
                         Text(text = "Close", color = Color.White, fontWeight = FontWeight.Medium, fontSize = 14.sp)
                     }
+                } else {
+                    // Empty: no live ride, no receipt, no history selection.
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MintRoute)
+                            .clickable(onClick = { onCancel() }),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "Find a ride", color = Color(0xFF0C1014), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -287,94 +456,18 @@ fun RideDetailsScreen(
 }
 
 @Composable
-private fun RideRouteMap(modifier: Modifier = Modifier) {
-    Box(modifier = modifier.background(Color(0xFF0A1015))) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val w = size.width
-            val h = size.height
-            // Secondary roads
-            val pathBg1 = Path().apply {
-                moveTo(-0.05f*w, 0.25f*h)
-                cubicTo(0.20f*w, 0.35f*h, 0.46f*w, 0.28f*h, 1.07f*w, 0.46f*h)
-            }
-            drawPath(pathBg1, color = Color(0xFF151C22), style = Stroke(width = 14f, cap = StrokeCap.Round))
-            val pathBg2 = Path().apply {
-                moveTo(0.25f*w, -0.05f*h)
-                cubicTo(0.30f*w, 0.46f*h, 0.18f*w, 1.06f*h, 0.18f*w, 1.06f*h)
-            }
-            drawPath(pathBg2, color = Color(0xFF141B21), style = Stroke(width = 10f))
-            val pathBg3 = Path().apply {
-                moveTo(0.40f*w, 0f)
-                lineTo(0.66f*w, h)
-            }
-            drawPath(pathBg3, color = Color(0xFF18222A), style = Stroke(width = 8f))
-            // Glow
-            val route = Path().apply {
-                moveTo(0.17f*w, 0.26f*h)
-                cubicTo(0.19f*w, 0.37f*h, 0.28f*w, 0.50f*h, 0.37f*w, 0.50f*h)
-                cubicTo(0.46f*w, 0.50f*h, 0.58f*w, 0.46f*h, 0.63f*w, 0.58f*h)
-                cubicTo(0.66f*w, 0.67f*h, 0.71f*w, 0.78f*h, 0.79f*w, 0.75f*h)
-            }
-            drawPath(route, color = MintRoute.copy(alpha = 0.2f), style = Stroke(width = 18f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-            drawPath(route, color = MintRoute, style = Stroke(width = 7f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-        }
-        // Labels
-        Text(text = "Kariakoo", color = Color(0xFF4B5965), fontSize = 11.sp, modifier = Modifier.align(Alignment.TopEnd).padding(top = 90.dp, end = 60.dp))
-        Text(text = "Mwenge", color = Color(0xFF4B5965), fontSize = 11.sp, modifier = Modifier.align(Alignment.Center).offset(x = (-60).dp, y = 30.dp))
-        // Origin dot
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .offset(x = 55.dp, y = 80.dp)
-                .size(16.dp)
-                .clip(CircleShape)
-                .background(MintDot)
-                .border(2.dp, Color(0xFF0A1015), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Color.White))
-        }
-        // Destination dot
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .offset(x = 298.dp, y = 235.dp)
-                .size(16.dp)
-                .clip(CircleShape)
-                .background(Color.White)
-                .border(2.dp, Color(0xFF0A1015), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Color(0xFF0A1015)))
-        }
-        // Car
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .offset(x = 40.dp, y = -10.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(width = 22.dp, height = 38.dp)
-                    .clip(RoundedCornerShape(7.dp))
-                    .background(Color(0xFF0C151B))
-                    .border(1.dp, Color(0xFF25323A), RoundedCornerShape(7.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxSize().padding(vertical = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Box(modifier = Modifier.size(16.dp, 10.dp).clip(RoundedCornerShape(3.dp)).background(Color.White))
-                    Box(modifier = Modifier.size(13.dp, 5.dp).clip(RoundedCornerShape(1.dp)).background(Color(0xFF0F171E)))
-                    Box(modifier = Modifier.size(13.dp, 4.dp).clip(RoundedCornerShape(1.dp)).background(Color(0xFF0F171E)))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Box(modifier = Modifier.size(3.dp).clip(CircleShape).background(MintRoute))
-                        Box(modifier = Modifier.size(3.dp).clip(CircleShape).background(MintRoute))
-                    }
-                }
-            }
+private fun PhaseBanner(dot: Color, title: String, subtitle: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+            .background(Color(0xFF141B20)).border(1.dp, Color(0xFF1E2730), RoundedCornerShape(14.dp))
+            .padding(13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(dot))
+        Column {
+            Text(text = title, color = Color.White, fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
+            if (subtitle.isNotBlank()) Text(text = subtitle, color = Color(0xFF6E7B86), fontSize = 11.5.sp)
         }
     }
 }
