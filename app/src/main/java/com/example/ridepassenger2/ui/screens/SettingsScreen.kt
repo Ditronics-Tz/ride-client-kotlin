@@ -1,27 +1,38 @@
 package com.example.ridepassenger2.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ridepassenger2.ui.components.HomeIndicator
+import com.example.ridepassenger2.data.local.AppPrefs
+import com.example.ridepassenger2.ui.components.RidaLogo
+import com.example.ridepassenger2.ui.theme.RidaDarkTheme
+import com.example.ridepassenger2.ui.theme.RidaLightTheme
 import kotlinx.coroutines.launch
 
-private val SettingsGreen = Color(0xFF3C9E7D)
+private val SettingsGreen = Color(0xFF008F64)
 
 @Composable
 fun SettingsScreen(
@@ -34,179 +45,287 @@ fun SettingsScreen(
     onHelp: () -> Unit = {},
     onContact: () -> Unit = {}
 ) {
-    var darkMode by remember { mutableStateOf(false) }
-    val context = androidx.compose.ui.platform.LocalContext.current
+    var darkMode by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val notifRides by com.example.ridepassenger2.data.local.AppPrefs.notifRides(context).collectAsState(initial = true)
-    val notifPromos by com.example.ridepassenger2.data.local.AppPrefs.notifPromos(context).collectAsState(initial = false)
+    val notifRides by AppPrefs.notifRides(context).collectAsState(initial = true)
+    val notifPromos by AppPrefs.notifPromos(context).collectAsState(initial = false)
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
+    val content: @Composable () -> Unit = {
+        val pageColor = if (darkMode) Color(0xFF0A0F14) else Color(0xFFF4FBF8)
+        val surfaceColor = if (darkMode) Color(0xFF181F26) else Color.White
+        val borderColor = if (darkMode) Color(0xFF26313B) else Color(0xFFDCE8E3)
+        val mutedColor = if (darkMode) Color(0xFFA6B4BF) else Color(0xFF667085)
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(pageColor)
                 .statusBarsPadding()
+                .navigationBarsPadding(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Top bar
             Row(
                 modifier = Modifier
+                    .widthIn(max = 600.dp)
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.End
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable(onClick = onBack),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = "←", fontSize = 20.sp, color = Color(0xFF111827))
-                }
-                Text(text = "Settings", fontSize = 19.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF111827))
+                RidaLogo(
+                    darkText = darkMode,
+                    green = if (darkMode) Color(0xFF43D2A1) else SettingsGreen,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
             }
 
-            Column(
+            LazyColumn(
                 modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp)
+                    .widthIn(max = 600.dp)
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                SettingsSection(title = "Account") {
-                    SettingsRow(icon = "👤", title = "Personal Information", subtitle = "Name, phone, email", onClick = onPersonal)
-                    SettingsRow(icon = "💳", title = "Payment Methods", subtitle = "Cards & mobile money", onClick = onPayment)
-                    SettingsRow(icon = "📍", title = "Saved Addresses", subtitle = "Home, work, frequent places", onClick = onAddresses)
+                item {
+                    Text(
+                        text = "Settings",
+                        fontSize = 30.sp,
+                        lineHeight = 36.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.6).sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "Manage your account and ride preferences.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = mutedColor
+                    )
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-                SettingsSection(title = "App Preferences") {
-                    SettingsRow(icon = "🔔", title = "Notifications", subtitle = "Ride updates, messages, offers", onClick = onNotifications)
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text(text = "🚗", fontSize = 16.sp)
-                            Column {
-                                Text(text = "Ride updates", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF111827))
-                                Text(text = "Driver found, arriving", fontSize = 11.sp, color = Color(0xFF9CA3AF))
-                            }
-                        }
-                        Switch(
+                item {
+                    SettingsSection("Account", surfaceColor, borderColor, mutedColor) {
+                        SettingsRow(Icons.Outlined.PersonOutline, "Personal information", "Name, phone and email", mutedColor, onPersonal)
+                        SettingsDivider(borderColor)
+                        SettingsRow(Icons.Outlined.CreditCard, "Payment methods", "Cards and mobile money", mutedColor, onPayment)
+                        SettingsDivider(borderColor)
+                        SettingsRow(Icons.Outlined.Place, "Saved addresses", "Home, work and favourite places", mutedColor, onAddresses)
+                    }
+                }
+                item {
+                    SettingsSection("Notifications", surfaceColor, borderColor, mutedColor) {
+                        SettingsToggle(
+                            icon = Icons.Outlined.DirectionsCar,
+                            title = "Ride updates",
+                            subtitle = "Driver matches and arrival updates",
                             checked = notifRides,
-                            onCheckedChange = { scope.launch { com.example.ridepassenger2.data.local.AppPrefs.setNotifRides(context, it) } },
-                            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = SettingsGreen)
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text(text = "🎁", fontSize = 16.sp)
-                            Column {
-                                Text(text = "Offers & promos", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF111827))
-                                Text(text = "Weekend discounts", fontSize = 11.sp, color = Color(0xFF9CA3AF))
+                            mutedColor = mutedColor,
+                            onCheckedChange = { value ->
+                                scope.launch { AppPrefs.setNotifRides(context, value) }
                             }
-                        }
-                        Switch(
+                        )
+                        SettingsDivider(borderColor)
+                        SettingsToggle(
+                            icon = Icons.Outlined.LocalOffer,
+                            title = "Offers and promos",
+                            subtitle = "Discounts for your next journey",
                             checked = notifPromos,
-                            onCheckedChange = { scope.launch { com.example.ridepassenger2.data.local.AppPrefs.setNotifPromos(context, it) } },
-                            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = SettingsGreen)
-                        )
-                    }
-                    SettingsRow(icon = "🛡", title = "Privacy & Security", subtitle = "Data, location, account", onClick = onNotifications)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text(text = "🌙", fontSize = 16.sp)
-                            Column {
-                                Text(text = "Dark Mode", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF111827))
-                                Text(text = if (darkMode) "On for this screen" else "System setting", fontSize = 11.sp, color = Color(0xFF9CA3AF))
+                            mutedColor = mutedColor,
+                            onCheckedChange = { value ->
+                                scope.launch { AppPrefs.setNotifPromos(context, value) }
                             }
-                        }
-                        Switch(
+                        )
+                        SettingsDivider(borderColor)
+                        SettingsRow(Icons.Outlined.Tune, "Ride preferences", "Seat preferences and location sharing", mutedColor, onNotifications)
+                    }
+                }
+                item {
+                    SettingsSection("Appearance", surfaceColor, borderColor, mutedColor) {
+                        SettingsToggle(
+                            icon = Icons.Outlined.DarkMode,
+                            title = "Dark mode",
+                            subtitle = "Use a dark Settings screen",
                             checked = darkMode,
-                            onCheckedChange = {
-                                darkMode = it
-                                android.widget.Toast.makeText(context, if (it) "Dark map is on Home" else "Light mode", android.widget.Toast.LENGTH_SHORT).show()
-                            },
-                            colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = SettingsGreen, uncheckedTrackColor = Color(0xFFE5E7EB))
+                            mutedColor = mutedColor,
+                            onCheckedChange = { darkMode = it }
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-                SettingsSection(title = "Support") {
-                    SettingsRow(icon = "❓", title = "Help & FAQ", subtitle = "Get answers to common questions", onClick = onHelp)
-                    SettingsRow(icon = "💬", title = "Contact Us", subtitle = "We're here to help", onClick = onContact)
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFFFDF2F2))
-                        .clickable(onClick = onLogOut)
-                        .padding(vertical = 14.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(text = "↗", color = Color(0xFFEF4444), fontSize = 14.sp)
-                        Text(text = "Log Out", color = Color(0xFFEF4444), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                item {
+                    SettingsSection("Support", surfaceColor, borderColor, mutedColor) {
+                        SettingsRow(Icons.AutoMirrored.Outlined.HelpOutline, "Help and FAQ", "Find answers about riding with Rida", mutedColor, onHelp)
+                        SettingsDivider(borderColor)
+                        SettingsRow(Icons.Outlined.ChatBubbleOutline, "Contact us", "Talk to the Rida team", mutedColor, onContact)
                     }
                 }
-                Spacer(modifier = Modifier.height(24.dp))
+                item {
+                    OutlinedButton(
+                        onClick = onLogOut,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, if (darkMode) Color(0xFF69363B) else Color(0xFFF0D5D5)),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = if (darkMode) Color(0xFF2A1C23) else Color(0xFFFFF8F7),
+                            contentColor = if (darkMode) Color(0xFFFFA3A3) else Color(0xFFB42318)
+                        )
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text("Log out", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
             }
         }
+    }
 
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .background(Color.White)
-                .padding(vertical = 8.dp),
-            contentAlignment = Alignment.Center
+    if (darkMode) RidaDarkTheme(content) else RidaLightTheme(content)
+}
+
+@Composable
+private fun SettingsSection(
+    title: String,
+    surfaceColor: Color,
+    borderColor: Color,
+    mutedColor: Color,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            text = title,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = mutedColor,
+            modifier = Modifier.padding(start = 4.dp)
+        )
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = surfaceColor,
+            border = BorderStroke(1.dp, borderColor)
         ) {
-            HomeIndicator(color = Color.Black.copy(alpha = 0.8f))
+            Column(content = content)
         }
     }
 }
 
 @Composable
-private fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column {
-        Text(text = title, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF1F2937), modifier = Modifier.padding(bottom = 6.dp, start = 4.dp))
-        Column {
-            content()
-        }
-    }
+private fun SettingsDivider(color: Color) {
+    HorizontalDivider(
+        modifier = Modifier.padding(start = 68.dp, end = 16.dp),
+        color = color.copy(alpha = 0.65f)
+    )
 }
 
 @Composable
-private fun SettingsRow(icon: String, title: String, subtitle: String, onClick: () -> Unit = {}) {
+private fun SettingsRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    mutedColor: Color,
+    onClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 10.dp, horizontal = 4.dp),
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(text = icon, fontSize = 16.sp, color = Color(0xFF374151))
-            Column {
-                Text(text = title, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFF111827))
-                Text(text = subtitle, fontSize = 11.sp, color = Color(0xFF9CA3AF))
-            }
-        }
-        Text(text = "›", fontSize = 16.sp, color = Color(0xFFD1D5DB))
+        SettingsIcon(icon)
+        SettingsCopy(title, subtitle, mutedColor, Modifier.weight(1f))
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = mutedColor,
+            modifier = Modifier.size(20.dp)
+        )
     }
-    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFF3F4F6)))
+}
+
+@Composable
+private fun SettingsToggle(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    mutedColor: Color,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        SettingsIcon(icon)
+        SettingsCopy(title, subtitle, mutedColor, Modifier.weight(1f))
+        Switch(
+            checked = checked,
+            onCheckedChange = null,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = SettingsGreen,
+                checkedBorderColor = SettingsGreen,
+                uncheckedThumbColor = mutedColor,
+                uncheckedTrackColor = mutedColor.copy(alpha = 0.12f),
+                uncheckedBorderColor = mutedColor.copy(alpha = 0.35f)
+            )
+        )
+    }
+}
+
+@Composable
+private fun SettingsIcon(icon: ImageVector) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(SettingsGreen.copy(alpha = 0.1f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (MaterialTheme.colorScheme.onSurface == Color.White) Color(0xFF43D2A1) else SettingsGreen,
+            modifier = Modifier.size(22.dp)
+        )
+    }
+}
+
+@Composable
+private fun SettingsCopy(title: String, subtitle: String, mutedColor: Color, modifier: Modifier) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = title,
+            fontSize = 15.sp,
+            lineHeight = 21.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            text = subtitle,
+            fontSize = 12.sp,
+            lineHeight = 18.sp,
+            color = mutedColor
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+fun SettingsScreenPreview() {
+    RidaLightTheme {
+        SettingsScreen()
+    }
+}
+
+@Preview(showBackground = true, widthDp = 320, heightDp = 640, fontScale = 1.3f)
+@Composable
+private fun CompactSettingsScreenPreview() {
+    RidaLightTheme {
+        SettingsScreen()
+    }
 }
