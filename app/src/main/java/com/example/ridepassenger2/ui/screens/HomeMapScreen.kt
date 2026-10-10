@@ -172,6 +172,15 @@ fun HomeMapScreen(
             if (route != null && route.geometry.coordinates.size >= 2) {
                 routePoints = route.geometry.coordinates.map { (lon, lat) -> GeoPoint(lat, lon) }
                 routeDistanceM = route.distance; routeDurationS = route.duration
+                // Snapshot for the Details screen + ride engine (real route, no fake map).
+                RideRepository.saveRoute(
+                    origin = origin,
+                    destination = dest,
+                    destinationLabel = destinationLabel ?: "Destination",
+                    points = routePoints,
+                    distanceM = route.distance,
+                    durationS = route.duration
+                )
                 mapCenter = GeoPoint((origin.latitude + dest.latitude) / 2, (origin.longitude + dest.longitude) / 2)
                 mapZoom = when { route.distance < 3000 -> 15.0; route.distance < 8000 -> 13.8; route.distance < 15000 -> 12.8; else -> 11.5 }
             } else {
@@ -200,60 +209,15 @@ fun HomeMapScreen(
         "TZS ${"%,d".format(fare)}"
     }
 
-    // ---- Live mock ride ----
+    // ---- Live mock ride (engine lives in RideRepository; Home only observes) ----
     val activeRide by RideRepository.activeRide.collectAsState()
     val justCompleted by RideRepository.lastCompleted.collectAsState()
-    var driverPin by remember { mutableStateOf<GeoPoint?>(null) }
+    val driverPin by RideRepository.driverPin.collectAsState()
     val busy = activeRide != null
 
-    fun lerp(a: GeoPoint, b: GeoPoint, t: Double) = GeoPoint(
-        a.latitude + (b.latitude - a.latitude) * t,
-        a.longitude + (b.longitude - a.longitude) * t
-    )
-
-    // Driver movement + phase advancement (mock GPS, ticks every ~2s)
+    // Jump to live tracking the moment the driver starts arriving.
     LaunchedEffect(activeRide?.phase) {
-        val phase = activeRide?.phase ?: run { driverPin = null; return@LaunchedEffect }
-        val pickup = currentLocation ?: return@LaunchedEffect
-        when (phase) {
-            RidePhase.DRIVER_FOUND -> {
-                var pos = GeoPoint(pickup.latitude + 0.012, pickup.longitude + 0.012)
-                driverPin = pos
-                repeat(6) {
-                    delay(2000)
-                    if (RideRepository.activeRide.value?.phase != RidePhase.DRIVER_FOUND) return@LaunchedEffect
-                    pos = lerp(pos, pickup, 0.25)
-                    driverPin = pos
-                }
-                RideRepository.markArriving()
-            }
-            RidePhase.ARRIVING -> {
-                repeat(3) {
-                    delay(2000)
-                    if (RideRepository.activeRide.value?.phase != RidePhase.ARRIVING) return@LaunchedEffect
-                }
-                RideRepository.markInTrip()
-                onRequestRide()
-            }
-            RidePhase.IN_TRIP -> {
-                val pts = routePoints
-                if (pts.size >= 2) {
-                    val step = (pts.size / 6).coerceAtLeast(1)
-                    var i = 0
-                    while (i < pts.size) {
-                        delay(2000)
-                        if (RideRepository.activeRide.value?.phase != RidePhase.IN_TRIP) return@LaunchedEffect
-                        driverPin = pts[i]
-                        i += step
-                    }
-                } else {
-                    delay(10000)
-                    if (RideRepository.activeRide.value?.phase != RidePhase.IN_TRIP) return@LaunchedEffect
-                }
-                RideRepository.completeRide()
-            }
-            else -> Unit
-        }
+        if (activeRide?.phase == RidePhase.ARRIVING) onRequestRide()
     }
 
     // Completion toast (fires when returning from the ride screen too)
@@ -262,6 +226,21 @@ fun HomeMapScreen(
             Toast.makeText(context, "Trip completed • ${it.price} • saved to Activity", Toast.LENGTH_LONG).show()
             RideRepository.consumeCompleted()
         }
+    }
+
+    // Freeze the current road route for the engine + Details screen.
+    // (The OSRM effect above also saves on every recalc; this guards the
+    // tap-Request-instantly race.)
+    fun snapshotRoute() {
+        val dest = destination ?: return
+        RideRepository.saveRoute(
+            origin = currentLocation ?: mapCenter,
+            destination = dest,
+            destinationLabel = destinationLabel ?: "Destination",
+            points = routePoints,
+            distanceM = routeDistanceM,
+            durationS = routeDurationS
+        )
     }
 
     val sheetState = rememberBottomSheetScaffoldState(
@@ -414,7 +393,7 @@ fun HomeMapScreen(
                     if (ride == null) {
                     if (selectedTab == "Share") {
                         SharedRidesSection { item ->
-                            driverPin = null
+                            snapshotRoute()
                             RideRepository.requestRide(
                                 pickup = "Your location",
                                 destination = destinationLabel ?: "Destination",
@@ -472,7 +451,7 @@ fun HomeMapScreen(
                             .clip(RoundedCornerShape(16.dp))
                             .background(MintSoft)
                             .clickable(onClick = {
-                                driverPin = null
+                                snapshotRoute()
                                 RideRepository.requestRide(
                                     pickup = "Your location",
                                     destination = destinationLabel ?: "Destination",
@@ -490,7 +469,7 @@ fun HomeMapScreen(
                         RideStatusCard(
                             phase = ride.phase,
                             ride = ride,
-                            onCancel = { driverPin = null; RideRepository.cancelRide() }
+                            onCancel = { RideRepository.cancelRide() }
                         )
                     }
                 }

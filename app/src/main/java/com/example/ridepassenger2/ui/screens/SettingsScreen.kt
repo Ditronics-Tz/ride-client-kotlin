@@ -175,6 +175,18 @@ fun SettingsScreen(
                         Text("Log out", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
+                item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Rida passenger • v1.0 alive (Oct 2026)",
+                            fontSize = 11.sp,
+                            color = mutedColor
+                        )
+                    }
+                }
             }
         }
     }
