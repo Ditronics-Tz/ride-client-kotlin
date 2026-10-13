@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ridepassenger2.ui.components.HomeIndicator
@@ -341,6 +342,17 @@ private fun CarMini() {
                 .size(width = 36.dp, height = 14.dp)
                 .clip(RoundedCornerShape(2.dp))
                 .background(RidaMint.copy(alpha = 0.18f))
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+fun OnboardingScreenPreview() {
+    RIDEPASSENGER2Theme {
+        OnboardingScreen(
+            onGetStarted = {},
+            onAlreadyHaveAccount = {}
         )
     }
 }

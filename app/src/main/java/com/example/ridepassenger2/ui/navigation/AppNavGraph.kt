@@ -15,6 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.ridepassenger2.data.local.SessionManager
+import com.example.ridepassenger2.data.mock.RideRepository
 import com.example.ridepassenger2.ui.components.RidaBottomBar
 import com.example.ridepassenger2.ui.screens.*
 import kotlinx.coroutines.launch
@@ -40,6 +41,13 @@ object Routes {
     const val RIDE_PREFS = "ride_prefs"
     const val HELP_FAQ = "help_faq"
     const val CONTACT_US = "contact_us"
+    const val TRIP_HELP = "trip_help"
+    const val RIDE_ISSUE = "ride_issue"
+    const val HELP_CENTER = "help_center"
+    const val SELECT_ISSUE_CATEGORY = "select_issue_category"
+    const val HELP_HUB = "help_hub"
+    const val HELP_ARTICLES = "help_articles"
+    const val ACCOUNT = "account"
 }
 
 // Bottom bar is shown only on the three primary tabs
@@ -183,8 +191,8 @@ fun AppNavGraph(
                 }
                 composable(Routes.RIDE_HISTORY) {
                     RideHistoryScreen(
-                        onRideClick = {
-                            com.example.ridepassenger2.data.mock.RideRepository.selectHistory(it)
+                        onRideClick = { item ->
+                            RideRepository.selectHistory(item)
                             navController.navigate(Routes.RIDE_DETAILS)
                         }
                     )
@@ -208,12 +216,13 @@ fun AppNavGraph(
                     SettingsScreen(
                         onBack = { navController.popBackStack() },
                         onLogOut = { logOut() },
-                        onPersonal = { navController.navigate(Routes.PERSONAL_INFO) },
-                        onPayment = { navController.navigate(Routes.PAYMENT) },
-                        onAddresses = { navController.navigate(Routes.SAVED_PLACES) },
-                        onNotifications = { navController.navigate(Routes.RIDE_PREFS) },
-                        onHelp = { navController.navigate(Routes.HELP_FAQ) },
-                        onContact = { navController.navigate(Routes.CONTACT_US) }
+                        onCommunication = { navController.navigate(Routes.RIDE_PREFS) },
+                        onLanguage = {},
+                        onRidePreferences = { navController.navigate(Routes.RIDE_PREFS) },
+                        onCalendar = { navController.navigate(Routes.SCHEDULE) },
+                        onPrivacy = { navController.navigate(Routes.SAFETY) },
+                        onSignInSecurity = { navController.navigate(Routes.PERSONAL_INFO) },
+                        onLegal = { navController.navigate(Routes.HELP_ARTICLES) }
                     )
                 }
                 composable(Routes.PAYMENT) {
@@ -240,6 +249,70 @@ fun AppNavGraph(
                 composable(Routes.RIDE_PREFS) { RidePreferencesScreen(onBack = { navController.popBackStack() }) }
                 composable(Routes.HELP_FAQ) { HelpFaqScreen(onBack = { navController.popBackStack() }) }
                 composable(Routes.CONTACT_US) { ContactUsScreen(onBack = { navController.popBackStack() }) }
+                composable(Routes.TRIP_HELP) {
+                    TripHelpScreen(
+                        onBack = { navController.popBackStack() },
+                        onExit = { navController.popBackStack() },
+                        onIssueSelect = { navController.popBackStack() }
+                    )
+                }
+                composable(Routes.RIDE_ISSUE) {
+                    SelectRideIssueScreen(
+                        onBack = { navController.popBackStack() },
+                        onExit = { navController.popBackStack() },
+                        onIssueSelect = { navController.popBackStack() }
+                    )
+                }
+                composable(Routes.HELP_CENTER) {
+                    HelpCenterScreen(
+                        onBack = { navController.popBackStack() },
+                        onExit = { navController.popBackStack() },
+                        onRideHelpSelect = { navController.navigate(Routes.TRIP_HELP) },
+                        onSomethingElseSelect = { navController.navigate(Routes.SELECT_ISSUE_CATEGORY) }
+                    )
+                }
+                composable(Routes.SELECT_ISSUE_CATEGORY) {
+                    SelectIssueCategoryScreen(
+                        onBack = { navController.popBackStack() },
+                        onExit = { navController.popBackStack() },
+                        onCategorySelect = { category ->
+                            if (category.title == "Rides") {
+                                navController.navigate(Routes.RIDE_ISSUE)
+                            } else {
+                                navController.popBackStack()
+                            }
+                        }
+                    )
+                }
+                composable(Routes.HELP_HUB) {
+                    HelpHubScreen(
+                        onBack = { navController.popBackStack() },
+                        onContactSupport = { navController.navigate(Routes.CONTACT_US) },
+                        onRecentTripClick = { navController.navigate(Routes.TRIP_HELP) },
+                        onHelpArticlesSelect = { navController.navigate(Routes.HELP_ARTICLES) },
+                        onMyCasesSelect = { navController.navigate(Routes.CONTACT_US) },
+                        onSafetyAssistanceSelect = { navController.navigate(Routes.SAFETY) }
+                    )
+                }
+                composable(Routes.HELP_ARTICLES) {
+                    HelpArticlesScreen(
+                        onBack = { navController.popBackStack() },
+                        onTopicSelect = { navController.navigate(Routes.HELP_CENTER) },
+                        onChatSupport = { navController.navigate(Routes.CONTACT_US) }
+                    )
+                }
+                composable(Routes.ACCOUNT) {
+                    AccountScreen(
+                        onBack = { navController.popBackStack() },
+                        onVerifyIdentity = { navController.navigate(Routes.PERSONAL_INFO) },
+                        onProfileSelect = { navController.navigate(Routes.PERSONAL_INFO) },
+                        onPaymentSelect = { navController.navigate(Routes.PAYMENT) },
+                        onSupportSelect = { navController.navigate(Routes.HELP_HUB) },
+                        onSafetySelect = { navController.navigate(Routes.SAFETY) },
+                        onSavedPlacesSelect = { navController.navigate(Routes.SAVED_PLACES) },
+                        onSettingsSelect = { navController.navigate(Routes.SETTINGS) }
+                    )
+                }
             }
         }
     }
