@@ -26,6 +26,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.Chat
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Route
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -139,66 +144,202 @@ private fun paymentIcon(method: String): String = when (method) {
 // Payment methods — Light Mode selector, persisted via AppPrefs
 // ------------------------------------------------------------------
 @Composable
-fun PaymentMethodsScreen(onBack: () -> Unit = {}) {
+fun PaymentMethodsScreen(
+    onBack: () -> Unit = {},
+    onAddMethod: () -> Unit = {}
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val current by AppPrefs.payment(context).collectAsState(initial = "Cash")
-    AliveScaffold(title = "Payment Methods", onBack = onBack) {
-        Text(text = "How do you want to pay? Cash is default in Dar.", fontSize = 13.5.sp, color = XMuted)
-        Spacer(modifier = Modifier.height(16.dp))
-        AppPrefs.PAYMENT_OPTIONS.forEach { method ->
-            val sel = current == method
-            Row(
+
+    AliveScaffold(title = "Payment methods", onBack = onBack) {
+        Text(text = "Choose how to pay for your rides.", fontSize = 13.5.sp, color = XMuted)
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // DEFAULT PAYMENT
+        Text(
+            text = "DEFAULT PAYMENT",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF6B7A88),
+            letterSpacing = 0.5.sp
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Cash Card
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(XCard)
+                .border(1.dp, XBorder, RoundedCornerShape(18.dp))
+                .clickable {
+                    scope.launch { AppPrefs.setPayment(context, "Cash") }
+                }
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(elevation = if (sel) 2.dp else 0.dp, shape = RoundedCornerShape(18.dp))
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(XCard)
-                    .border(if (sel) 1.8.dp else 1.dp, if (sel) XMint else XBorder, RoundedCornerShape(18.dp))
-                    .clickable {
-                        scope.launch {
-                            AppPrefs.setPayment(context, method)
-                            Toast.makeText(context, "$method set as default", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(XPill),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(XPill),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = paymentIcon(method), fontSize = 18.sp)
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = method, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = XTitle)
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = when (method) {
-                            "Cash" -> "Pay the driver directly"
-                            "Card" -> "Visa • Mastercard"
-                            else -> "Mobile money • Tanzania"
-                        },
-                        fontSize = 12.5.sp, color = XMuted
-                    )
-                }
-                if (sel) {
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(XMint),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = "✓", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
+                Text(text = "💵", fontSize = 20.sp)
             }
-            Spacer(modifier = Modifier.height(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = "Cash", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = XTitle)
+                Spacer(Modifier.height(2.dp))
+                Text(text = "Pay the driver after your ride", fontSize = 12.5.sp, color = XMuted)
+            }
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(XMint),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = "✓", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // OTHER PAYMENT METHODS
+        Text(
+            text = "OTHER PAYMENT METHODS",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF6B7A88),
+            letterSpacing = 0.5.sp
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Mobile money
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(XCard)
+                .border(1.dp, XBorder, RoundedCornerShape(18.dp))
+                .clickable {
+                    scope.launch { AppPrefs.setPayment(context, "M-Pesa") }
+                    Toast.makeText(context, "Mobile money selected", Toast.LENGTH_SHORT).show()
+                }
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(XPill),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = "📱", fontSize = 20.sp)
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = "Mobile money", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = XTitle)
+                Spacer(Modifier.height(2.dp))
+                Text(text = "M-Pesa, Airtel Money, Mixx by Yas", fontSize = 12.5.sp, color = XMuted)
+            }
+            Text(text = "›", fontSize = 22.sp, color = Color(0xFF98A6A0))
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Debit or credit card
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(XCard)
+                .border(1.dp, XBorder, RoundedCornerShape(18.dp))
+                .clickable {
+                    scope.launch { AppPrefs.setPayment(context, "Card") }
+                    Toast.makeText(context, "Card selected", Toast.LENGTH_SHORT).show()
+                }
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(XPill),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = "💳", fontSize = 20.sp)
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = "Debit or credit card", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = XTitle)
+                Spacer(Modifier.height(2.dp))
+                Text(text = "Visa and Mastercard", fontSize = 12.5.sp, color = XMuted)
+            }
+            Text(text = "›", fontSize = 22.sp, color = Color(0xFF98A6A0))
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Payments made simpler Banner
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(XPill)
+                .padding(16.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(Color.White),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = "✓", color = XMint, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+            Column {
+                Text(
+                    text = "Payments made simpler",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = XTitle
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = "Your details remain protected. Method availability may vary.",
+                    fontSize = 12.5.sp,
+                    color = XMuted,
+                    lineHeight = 17.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        // Add payment method Button
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .shadow(4.dp, RoundedCornerShape(18.dp), ambientColor = XMintBtn.copy(alpha = 0.2f))
+                .clip(RoundedCornerShape(18.dp))
+                .background(XMintBtn)
+                .clickable(onClick = onAddMethod),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Add payment method +",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
         }
     }
 }
@@ -833,61 +974,241 @@ fun PersonalInfoScreen(onBack: () -> Unit = {}) {
 // Ride preferences — seat + sharing, persisted
 // ------------------------------------------------------------------
 @Composable
-fun RidePreferencesScreen(onBack: () -> Unit = {}) {
+fun RidePreferencesScreen(
+    onBack: () -> Unit = {},
+    onSave: () -> Unit = {}
+) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val seat by AppPrefs.seatPref(context).collectAsState(initial = "Any seat")
-    val share by AppPrefs.shareLocation(context).collectAsState(initial = true)
+    var quietRide by remember { mutableStateOf(false) }
+    var extraPickupTime by remember { mutableStateOf(true) }
+    var shareTripStatus by remember { mutableStateOf(true) }
+    var preciseLocation by remember { mutableStateOf(true) }
 
-    AliveScaffold(title = "Ride Preferences", onBack = onBack) {
-        Text(text = "Seat preference", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = XTitle)
+    AliveScaffold(title = "Ride preferences", onBack = onBack) {
+        Text(text = "Make every journey feel more like yours.", fontSize = 13.5.sp, color = XMuted)
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // COMFORT PREFERENCES
+        Text(
+            text = "COMFORT PREFERENCES",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF6B7A88),
+            letterSpacing = 0.5.sp
+        )
         Spacer(modifier = Modifier.height(10.dp))
-        listOf("Any seat", "Window seat", "Front seat", "Quiet ride").forEach { s ->
-            val sel = seat == s
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(XCard)
-                    .border(if (sel) 1.8.dp else 1.dp, if (sel) XMint else XBorder, RoundedCornerShape(16.dp))
-                    .clickable { scope.launch { AppPrefs.setSeatPref(context, s) } }
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(text = s, fontSize = 14.5.sp, color = XTitle, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                if (sel) {
-                    Box(
-                        modifier = Modifier
-                            .size(22.dp)
-                            .clip(CircleShape)
-                            .background(XMint),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = "✓", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(10.dp))
-        }
-        Spacer(modifier = Modifier.height(14.dp))
+
+        // Quiet ride
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(18.dp))
                 .background(XCard)
-                .border(1.dp, XBorder, RoundedCornerShape(16.dp))
+                .border(1.dp, XBorder, RoundedCornerShape(18.dp))
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(XPill),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.Chat,
+                    contentDescription = null,
+                    tint = XMint,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = "Share live location with driver", fontSize = 14.5.sp, color = XTitle, fontWeight = FontWeight.Bold)
+                Text(text = "Quiet ride", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = XTitle)
                 Spacer(Modifier.height(2.dp))
-                Text(text = "Faster pickup at crowded places", fontSize = 12.5.sp, color = XMuted)
+                Text(text = "Prefer minimal conversation", fontSize = 12.5.sp, color = XMuted)
             }
             Switch(
-                checked = share,
-                onCheckedChange = { scope.launch { AppPrefs.setShareLocation(context, it) } },
+                checked = quietRide,
+                onCheckedChange = { quietRide = it },
                 colors = SwitchDefaults.colors(checkedTrackColor = XMintBtn)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Extra pickup time
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(XCard)
+                .border(1.dp, XBorder, RoundedCornerShape(18.dp))
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(XPill),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Schedule,
+                    contentDescription = null,
+                    tint = XMint,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = "Extra pickup time", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = XTitle)
+                Spacer(Modifier.height(2.dp))
+                Text(text = "Allow time to reach the vehicle", fontSize = 12.5.sp, color = XMuted)
+            }
+            Switch(
+                checked = extraPickupTime,
+                onCheckedChange = { extraPickupTime = it },
+                colors = SwitchDefaults.colors(checkedTrackColor = XMintBtn)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // LOCATION & SAFETY
+        Text(
+            text = "LOCATION & SAFETY",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF6B7A88),
+            letterSpacing = 0.5.sp
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Share trip status
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(XCard)
+                .border(1.dp, XBorder, RoundedCornerShape(18.dp))
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(XPill),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Route,
+                    contentDescription = null,
+                    tint = XMint,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = "Share trip status", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = XTitle)
+                Spacer(Modifier.height(2.dp))
+                Text(text = "Make live trip sharing easier", fontSize = 12.5.sp, color = XMuted)
+            }
+            Switch(
+                checked = shareTripStatus,
+                onCheckedChange = { shareTripStatus = it },
+                colors = SwitchDefaults.colors(checkedTrackColor = XMintBtn)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Precise pickup location
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(XCard)
+                .border(1.dp, XBorder, RoundedCornerShape(18.dp))
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(XPill),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.LocationOn,
+                    contentDescription = null,
+                    tint = XMint,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = "Precise pickup location", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = XTitle)
+                Spacer(Modifier.height(2.dp))
+                Text(text = "Use your accurate location when booking", fontSize = 12.5.sp, color = XMuted)
+            }
+            Switch(
+                checked = preciseLocation,
+                onCheckedChange = { preciseLocation = it },
+                colors = SwitchDefaults.colors(checkedTrackColor = XMintBtn)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Info Banner Box
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(XPill)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.FavoriteBorder,
+                contentDescription = "Preferences",
+                tint = XMint,
+                modifier = Modifier.size(22.dp)
+            )
+            Text(
+                text = "Settings are preferences, not guarantees.",
+                fontSize = 13.5.sp,
+                fontWeight = FontWeight.Bold,
+                color = XTitle
+            )
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        // Save preferences Button
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .shadow(4.dp, RoundedCornerShape(18.dp), ambientColor = XMintBtn.copy(alpha = 0.2f))
+                .clip(RoundedCornerShape(18.dp))
+                .background(XMintBtn)
+                .clickable {
+                    Toast.makeText(context, "Preferences saved", Toast.LENGTH_SHORT).show()
+                    onSave()
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Save preferences",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
             )
         }
     }
