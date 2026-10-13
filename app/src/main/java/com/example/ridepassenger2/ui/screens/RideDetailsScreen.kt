@@ -22,6 +22,8 @@ import com.example.ridepassenger2.data.mock.RideRepository
 import com.example.ridepassenger2.data.remote.MapServiceFactory
 import com.example.ridepassenger2.ui.components.HomeIndicator
 import com.example.ridepassenger2.ui.map.RidaMapView
+import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
+import androidx.compose.ui.tooling.preview.Preview
 import org.osmdroid.util.GeoPoint
 
 private val DetailsBg = Color(0xFF0C1014)
@@ -469,5 +471,13 @@ private fun PhaseBanner(dot: Color, title: String, subtitle: String) {
             Text(text = title, color = Color.White, fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
             if (subtitle.isNotBlank()) Text(text = subtitle, color = Color(0xFF6E7B86), fontSize = 11.5.sp)
         }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+fun RideDetailsScreenPreview() {
+    RIDEPASSENGER2Theme {
+        RideDetailsScreen()
     }
 }
