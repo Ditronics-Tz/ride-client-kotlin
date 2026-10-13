@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ridepassenger2.ui.components.HomeIndicator
@@ -156,5 +157,17 @@ fun ForgotPasswordScreen(
         ) {
             HomeIndicator(color = Color.Black)
         }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+fun ForgotPasswordScreenPreview() {
+    RIDEPASSENGER2Theme {
+        ForgotPasswordScreen(
+            onBack = {},
+            onSendReset = {},
+            onBackToSignIn = {}
+        )
     }
 }

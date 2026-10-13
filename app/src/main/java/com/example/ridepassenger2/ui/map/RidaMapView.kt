@@ -10,12 +10,18 @@ import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.drawable.BitmapDrawable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.viewinterop.AndroidView
 import org.osmdroid.config.Configuration
 import org.osmdroid.util.GeoPoint
@@ -48,6 +54,16 @@ fun RidaMapView(
     onMapReady: ((MapView) -> Unit)? = null,
     enableMyLocation: Boolean = false
 ) {
+    if (LocalInspectionMode.current) {
+        Box(
+            modifier = modifier.background(if (useDarkTiles) Color(0xFF0A0F14) else Color(0xFFE5E7EB)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text = "🗺 Map Preview", color = if (useDarkTiles) Color.White else Color.Black)
+        }
+        return
+    }
+
     val context = LocalContext.current
 
     // osmdroid REQUIRED setup — must run before ANY provider/MapView is created,

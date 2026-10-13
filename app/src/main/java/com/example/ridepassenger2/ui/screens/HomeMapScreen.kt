@@ -31,9 +31,11 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,6 +46,7 @@ import com.example.ridepassenger2.data.remote.MapServiceFactory
 import com.example.ridepassenger2.data.remote.NominatimPlace
 import com.example.ridepassenger2.data.remote.osrmCoords
 import com.example.ridepassenger2.ui.map.RidaMapView
+import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -120,12 +123,14 @@ fun HomeMapScreen(
     var searchFocused by remember { mutableStateOf(false) }
     var searchError by remember { mutableStateOf(false) }
 
-    val permissionState = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
+    val isPreview = LocalInspectionMode.current
+    val permissionState = if (isPreview) null else rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
+    val isPermissionGranted = permissionState?.status?.isGranted == true
     val fusedClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
     @SuppressLint("MissingPermission")
     fun fetchLocation() {
-        if (!permissionState.status.isGranted) return
+        if (!isPermissionGranted) return
         fusedClient.lastLocation.addOnSuccessListener { loc: Location? ->
             if (loc != null) {
                 val gp = GeoPoint(loc.latitude, loc.longitude)
@@ -142,8 +147,8 @@ fun HomeMapScreen(
         }
     }
 
-    LaunchedEffect(Unit) { if (!permissionState.status.isGranted) permissionState.launchPermissionRequest() }
-    LaunchedEffect(permissionState.status.isGranted) { if (permissionState.status.isGranted) fetchLocation() }
+    LaunchedEffect(Unit) { if (!isPermissionGranted && !isPreview) permissionState?.launchPermissionRequest() }
+    LaunchedEffect(isPermissionGranted) { if (isPermissionGranted) fetchLocation() }
 
     LaunchedEffect(query) {
         if (query.trim().length < 2) { searchResults = emptyList(); isSearching = false; searchError = false; return@LaunchedEffect }
@@ -490,7 +495,7 @@ fun HomeMapScreen(
                     destination = destination,
                     routePoints = routePoints,
                     driverLocations = if (driverPin != null && busy) listOf(driverPin!!) else driverPins,
-                    enableMyLocation = permissionState.status.isGranted
+                    enableMyLocation = isPermissionGranted
                 )
 
                 Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 16.dp)) {
@@ -517,7 +522,7 @@ fun HomeMapScreen(
                                     Column(horizontalAlignment = Alignment.End) {
                                         Text(text = "Your location", fontSize = 10.sp, color = DarkMuted, fontWeight = FontWeight.Medium)
                                         Text(
-                                            text = if (permissionState.status.isGranted) (currentLocation?.let { "%.4f, %.4f".format(it.latitude, it.longitude) } ?: "Locating…") else "Tap to enable GPS",
+                                            text = if (isPermissionGranted) (currentLocation?.let { "%.4f, %.4f".format(it.latitude, it.longitude) } ?: "Locating…") else "Tap to enable GPS",
                                             fontSize = 11.5.sp,
                                             color = DarkBody,
                                             fontWeight = FontWeight.SemiBold,
@@ -558,7 +563,7 @@ fun HomeMapScreen(
                                     textStyle = LocalTextStyle.current.copy(fontSize = 13.5.sp, color = DarkTitle)
                                 )
                                 if (query.isNotEmpty()) Box(modifier = Modifier.clip(CircleShape).background(DarkPill).clickable { query = ""; destination = null; destinationLabel = null; routePoints = emptyList(); searchResults = emptyList() }.padding(6.dp)) { Text(text = "✕", fontSize = 10.sp, color = DarkMuted) }
-                                else Box(modifier = Modifier.size(30.dp).clip(CircleShape).background(DarkPill).border(1.dp, DarkBorder, CircleShape).clickable { if (!permissionState.status.isGranted) permissionState.launchPermissionRequest() else fetchLocation() }, contentAlignment = Alignment.Center) { Text(text = "◎", color = Mint, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                                else Box(modifier = Modifier.size(30.dp).clip(CircleShape).background(DarkPill).border(1.dp, DarkBorder, CircleShape).clickable { if (!isPermissionGranted) permissionState?.launchPermissionRequest() else fetchLocation() }, contentAlignment = Alignment.Center) { Text(text = "◎", color = Mint, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                             }
                         }
                     }
@@ -612,7 +617,7 @@ fun HomeMapScreen(
                             .clip(CircleShape)
                             .background(DarkCardBg)
                             .border(1.dp, DarkBorder, CircleShape)
-                            .clickable { if (!permissionState.status.isGranted) permissionState.launchPermissionRequest() else fetchLocation() },
+                            .clickable { if (!isPermissionGranted) permissionState?.launchPermissionRequest() else fetchLocation() },
                         contentAlignment = Alignment.Center
                     ) { Text(text = "◎", color = Mint, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
                 }
@@ -941,5 +946,13 @@ private fun OptionCarIcon(active: Boolean, iconSize: Dp = 20.dp) {
         drawLine(color = tint, start = Offset(w * 0.58f, h * 0.20f), end = Offset(w * 0.58f, h * 0.43f), strokeWidth = 1.1.dp.toPx(), cap = StrokeCap.Round)
         drawCircle(color = tint, radius = w * 0.09f, center = Offset(w * 0.28f, h * 0.76f), style = Stroke(width = 1.4.dp.toPx()))
         drawCircle(color = tint, radius = w * 0.09f, center = Offset(w * 0.72f, h * 0.76f), style = Stroke(width = 1.4.dp.toPx()))
+    }
+}
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+fun HomeMapScreenPreview() {
+    RIDEPASSENGER2Theme {
+        HomeMapScreen()
     }
 }
