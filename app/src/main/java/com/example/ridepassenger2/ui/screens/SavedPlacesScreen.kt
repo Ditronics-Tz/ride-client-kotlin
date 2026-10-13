@@ -320,103 +320,38 @@ fun SavedPlacesScreen(
         }
     }
 
-    // Edit/Add Dialog
+    // Edit/Add Screen overlay
     if (editingType != null) {
-        val isShortcut = editingType == "home" || editingType == "work"
-        val isNew = editingType == "new"
-
-        AlertDialog(
-            onDismissRequest = { editingType = null },
-            title = {
-                Text(
-                    text = when {
-                        editingType == "home" -> "Set Home Address"
-                        editingType == "work" -> "Set Work Address"
-                        isNew -> "Add New Place"
-                        else -> "Edit Place"
-                    },
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (!isShortcut) {
-                        OutlinedTextField(
-                            value = editTitleDraft,
-                            onValueChange = { editTitleDraft = it },
-                            label = { Text("Place Name") },
-                            placeholder = { Text("e.g. Gym, Mlimani Mall") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RidaGreen)
-                        )
-                    }
-                    OutlinedTextField(
-                        value = editAddressDraft,
-                        onValueChange = { editAddressDraft = it },
-                        label = { Text("Address / Location") },
-                        placeholder = { Text("e.g. Sam Nujoma Road, Dar es Salaam") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = RidaGreen)
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val addr = editAddressDraft.trim()
-                        if (addr.length < 2) {
-                            Toast.makeText(context, "Please enter an address", Toast.LENGTH_SHORT).show()
-                            return@TextButton
+        AddAddressScreen(
+            initialLabel = editTitleDraft,
+            initialAddress = editAddressDraft,
+            onBack = { editingType = null },
+            onSave = { label, address ->
+                scope.launch {
+                    when (editingType) {
+                        "home" -> AppPrefs.setHome(context, address)
+                        "work" -> AppPrefs.setWork(context, address)
+                        "new" -> {
+                            customPlaces.add(
+                                SavedPlaceItem(
+                                    id = "custom_${System.currentTimeMillis()}",
+                                    title = label,
+                                    address = address
+                                )
+                            )
                         }
-                        scope.launch {
-                            when (editingType) {
-                                "home" -> AppPrefs.setHome(context, addr)
-                                "work" -> AppPrefs.setWork(context, addr)
-                                "new" -> {
-                                    val name = editTitleDraft.trim().ifBlank { "Saved Place" }
-                                    customPlaces.add(
-                                        SavedPlaceItem(
-                                            id = "custom_${System.currentTimeMillis()}",
-                                            title = name,
-                                            address = addr
-                                        )
-                                    )
-                                }
-                                else -> {
-                                    val index = customPlaces.indexOfFirst { it.id == editingType }
-                                    if (index >= 0) {
-                                        customPlaces[index] = SavedPlaceItem(
-                                            id = editingType!!,
-                                            title = editTitleDraft.trim().ifBlank { "Saved Place" },
-                                            address = addr
-                                        )
-                                    }
-                                }
+                        else -> {
+                            val index = customPlaces.indexOfFirst { it.id == editingType }
+                            if (index >= 0) {
+                                customPlaces[index] = SavedPlaceItem(
+                                    id = editingType!!,
+                                    title = label,
+                                    address = address
+                                )
                             }
-                            editingType = null
                         }
                     }
-                ) {
-                    Text("Save", color = RidaGreen, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                Row {
-                    if (!isShortcut && !isNew) {
-                        TextButton(
-                            onClick = {
-                                customPlaces.removeAll { it.id == editingType }
-                                editingType = null
-                            }
-                        ) {
-                            Text("Delete", color = Color(0xFFD92D20))
-                        }
-                    }
-                    TextButton(onClick = { editingType = null }) {
-                        Text("Cancel", color = TextMuted)
-                    }
+                    editingType = null
                 }
             }
         )
