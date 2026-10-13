@@ -48,6 +48,12 @@ object Routes {
     const val HELP_HUB = "help_hub"
     const val HELP_ARTICLES = "help_articles"
     const val ACCOUNT = "account"
+    // New flow graphs (existing routes untouched)
+    const val PAY_FLOW = "pay_flow"
+    const val PAY_HISTORY = "pay_history"
+    const val PROFILE_FLOW = "profile_flow"
+    const val SUPPORT_FLOW = "support_flow"
+    const val FLOW_GALLERY = "flow_gallery"
 }
 
 // Bottom bar is shown only on the three primary tabs
@@ -313,6 +319,18 @@ fun AppNavGraph(
                         onSettingsSelect = { navController.navigate(Routes.SETTINGS) }
                     )
                 }
+                // Separate flow graphs — new routes only, existing ones unchanged.
+                composable(Routes.PAY_FLOW) { PaymentFlowNav() }
+                composable(Routes.PAY_HISTORY) {
+                    com.example.ridepassenger2.ui.payment.PayHistoryScreen(
+                        records = com.example.ridepassenger2.ui.preview.FakePayments.history(),
+                        filter = com.example.ridepassenger2.ui.payment.PayFilter.ALL,
+                        onFilter = {}, onOpen = {}, onBack = { navController.popBackStack() }
+                    )
+                }
+                composable(Routes.PROFILE_FLOW) { ProfileFlowNav() }
+                composable(Routes.SUPPORT_FLOW) { SupportFlowNav() }
+                composable(Routes.FLOW_GALLERY) { FlowGallery() }
             }
         }
     }
