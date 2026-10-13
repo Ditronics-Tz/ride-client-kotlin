@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
@@ -34,6 +35,7 @@ import com.example.ridepassenger2.data.local.AuthValidation
 import com.example.ridepassenger2.data.local.SessionManager
 import com.example.ridepassenger2.data.mock.RideRepository
 import com.example.ridepassenger2.ui.components.HomeIndicator
+import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 import kotlinx.coroutines.launch
 
 private val XBg = Color(0xFF0A0F14)
@@ -676,4 +678,76 @@ fun PrivacyDialog(onDismiss: () -> Unit) {
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(text = "Got it", color = XMintBtn) } }
     )
+}
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+fun PaymentMethodsScreenPreview() {
+    RIDEPASSENGER2Theme {
+        PaymentMethodsScreen()
+    }
+}
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+fun SavedPlacesScreenPreview() {
+    RIDEPASSENGER2Theme {
+        SavedPlacesScreen()
+    }
+}
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+fun ScheduleRideScreenPreview() {
+    RIDEPASSENGER2Theme {
+        ScheduleRideScreen()
+    }
+}
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+fun PackageRideScreenPreview() {
+    RIDEPASSENGER2Theme {
+        PackageRideScreen()
+    }
+}
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+fun SafetyScreenPreview() {
+    RIDEPASSENGER2Theme {
+        SafetyScreen()
+    }
+}
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+fun PersonalInfoScreenPreview() {
+    RIDEPASSENGER2Theme {
+        PersonalInfoScreen()
+    }
+}
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+fun RidePreferencesScreenPreview() {
+    RIDEPASSENGER2Theme {
+        RidePreferencesScreen()
+    }
+}
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+fun HelpFaqScreenPreview() {
+    RIDEPASSENGER2Theme {
+        HelpFaqScreen()
+    }
+}
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+fun ContactUsScreenPreview() {
+    RIDEPASSENGER2Theme {
+        ContactUsScreen()
+    }
 }
