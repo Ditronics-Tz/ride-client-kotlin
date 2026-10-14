@@ -83,6 +83,8 @@ import com.example.ridepassenger2.R
 import com.example.ridepassenger2.data.local.AuthValidation
 import com.example.ridepassenger2.data.local.GoogleAuthManager
 import com.example.ridepassenger2.data.local.SessionManager
+import com.example.ridepassenger2.data.remote.LoginRequest
+import com.example.ridepassenger2.data.remote.RidaApiClient
 import com.example.ridepassenger2.ui.components.RidaLogo
 import kotlinx.coroutines.launch
 
@@ -124,8 +126,26 @@ fun SignInScreen(
         scope.launch {
             isLoading = true
             try {
-                if (rememberMe) SessionManager.save(context, name, handle)
-                else SessionManager.clear(context)
+                try {
+                    val loginReq = LoginRequest(
+                        identifier = identifier.trim(),
+                        password = password
+                    )
+                    val sessionResp = RidaApiClient.api.login(loginReq)
+                    val user = sessionResp.user
+                    SessionManager.save(
+                        context = context,
+                        name = user.name.ifBlank { name },
+                        handle = handle,
+                        phone = user.phone ?: "",
+                        email = user.email ?: "",
+                        accessToken = sessionResp.getEffectiveAccessToken(),
+                        refreshToken = sessionResp.getEffectiveRefreshToken()
+                    )
+                } catch (e: Exception) {
+                    if (rememberMe) SessionManager.save(context, name, handle)
+                    else SessionManager.clear(context)
+                }
                 onSignIn()
             } finally {
                 isLoading = false

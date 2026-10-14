@@ -11,13 +11,14 @@ import com.example.ridepassenger2.ui.navigation.AppNavGraph
 import com.example.ridepassenger2.ui.navigation.Routes
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 import com.example.ridepassenger2.data.local.SessionManager
+import com.example.ridepassenger2.data.remote.RidaApiClient
 import kotlinx.coroutines.runBlocking
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        // Mock session: signed-in riders skip straight to Home.
+        RidaApiClient.init(applicationContext)
         val start = try {
             runBlocking { SessionManager.isLoggedIn(this@MainActivity) }
         } catch (_: Exception) { false }

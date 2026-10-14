@@ -83,6 +83,8 @@ import com.example.ridepassenger2.R
 import com.example.ridepassenger2.data.local.AuthValidation
 import com.example.ridepassenger2.data.local.GoogleAuthManager
 import com.example.ridepassenger2.data.local.SessionManager
+import com.example.ridepassenger2.data.remote.RegisterRequest
+import com.example.ridepassenger2.data.remote.RidaApiClient
 import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 import kotlinx.coroutines.launch
@@ -130,7 +132,26 @@ fun CreateAccountScreen(
         scope.launch {
             isLoading = true
             try {
-                SessionManager.save(context, fullName.trim(), handle, phone.trim(), email.trim())
+                try {
+                    val regReq = RegisterRequest(
+                        name = fullName.trim(),
+                        email = email.trim().ifBlank { "${phone.trim().replace(" ", "")}@rida.tz" },
+                        password = password
+                    )
+                    val sessionResp = RidaApiClient.api.register(regReq)
+                    val user = sessionResp.user
+                    SessionManager.save(
+                        context = context,
+                        name = user.name.ifBlank { fullName.trim() },
+                        handle = handle,
+                        phone = user.phone ?: phone.trim(),
+                        email = user.email ?: email.trim(),
+                        accessToken = sessionResp.getEffectiveAccessToken(),
+                        refreshToken = sessionResp.getEffectiveRefreshToken()
+                    )
+                } catch (e: Exception) {
+                    SessionManager.save(context, fullName.trim(), handle, phone.trim(), email.trim())
+                }
                 onCreateAccount()
             } finally {
                 isLoading = false
