@@ -75,6 +75,11 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.datastore.preferences)
 
+    // Credential Manager & Google Sign-In
+    implementation(libs.credentials.core)
+    implementation(libs.credentials.play)
+    implementation(libs.google.id)
+
     debugImplementation(libs.androidx.ui.tooling)
 
     testImplementation(libs.junit)

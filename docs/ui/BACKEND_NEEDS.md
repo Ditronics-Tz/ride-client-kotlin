@@ -1,19 +1,58 @@
-# Backend needs (checked: no `docs/api/openapi.yaml`, no backend routes in this repo → all unknown/missing)
+# Passenger UI integration audit
 
-Legend: exists = in openapi; missing = not in openapi but needed; unknown = no spec found (this repo).
+This is an audit of the current Kotlin/Compose screens and their actual data paths. It does not define or assume server routes. No API schema, backend source, or first-party API client is present in this repository, so exact server contracts cannot be established from the UI alone.
 
-| Screen | Method + path (proposed) | Request / response | Errors | Status |
-|---|---|---|---|---|
-| Payment methods list/create/default/delete | GET/POST/PATCH/DELETE `/v1/payment-methods` | `{provider, msisdn}` → `{id, masked, isDefault}` | 400 invalid_msisdn, 409 in_use, 404 | unknown |
-| Mobile-money verify + poll | POST `/v1/payment-methods/verify` + GET `/v1/verifications/{id}` | `{methodId}` → `{status: pending/approved/declined/expired}` | 408 timeout, 422 declined, 429 | unknown |
-| Payment history/detail | GET `/v1/payments?filter=&cursor=` + GET `/v1/payments/{id}` | `{route, amountTzs, status, methodMasked, time(Africa/Dar_es_Salaam), ref, discount}` | 404, 401 | unknown |
-| Pay trip | POST `/v1/trips/{id}/pay` | `{methodId}` → `{status}` | 402 failed, 409 already_paid | unknown |
-| Change phone (OTP) | POST `/v1/profile/phone/otp` + POST `/v1/profile/phone/confirm` | `{msisdn}` → `{sent}` / `{code, attemptsLeft}` → `{ok}` | 400 invalid, 409 in_use, 401 reauth, 429 rate_limited, 410 expired, 423 locked | unknown |
-| Change email link | POST `/v1/profile/email` + GET `/v1/profile/email/verify?token=` | `{email}` → `{pending}` | 400 invalid, 409 in_use, 410 expired | unknown |
-| Profile photo presigned upload | POST `/v1/uploads/presign` + PUT object URL | `{contentType,size}` → `{url, key}` | 413 too_large | unknown |
-| Sessions / logout | GET `/v1/sessions`, DELETE `/v1/sessions/{id|all}` | `{device,lastUsed}` | 401 | unknown |
-| Tickets create/list/detail/reply | POST/GET `/v1/tickets`, GET `/v1/tickets/{id}`, POST `/v1/tickets/{id}/replies`, POST `/v1/tickets/{id}/resolve|reopen|rating` | `{topic,subject,description,attachments[],contact,tripId?}` → `{ticketId, status}` | 400 validation, 413 attachments, 404 | unknown |
-| Attachment upload (presigned) | POST `/v1/uploads/presign` | ≤3 images, ≤5MB each | 413 | unknown |
-| Admin support queue | Admin UI where each ticket appears (queue, assignment, SLA ~24h per `SupportConfig.REVIEW_HOURS`) | — | — | unknown |
+## Verified network integrations
 
-Notes: SOS/112 is dial-only (`tel:112`), no monitoring. Payout screens skipped (TARGET=passenger; driver payouts marked coming-soon if needed later). Times stored/displayed Africa/Dar_es_Salaam; money whole TZS.
+| Integration | Where it is used | Actual behavior in this app |
+|---|---|---|
+| Nominatim / OpenStreetMap | `HomeMapScreen` searches place text. `RideDetailsScreen` geocodes a selected history destination for its map. | Direct Retrofit GET calls to `https://nominatim.openstreetmap.org/`. Search is limited to Tanzania and biased to the Dar es Salaam viewbox. The reverse-geocode method exists in `MapServices.kt`, but no call site uses it. |
+| OSRM demo routing | `HomeMapScreen` calculates the road line between current/map-center and selected destination. | Direct Retrofit GET calls to `https://router.project-osrm.org/`. The response provides route geometry, distance, and duration. Duration/distance are used in the UI; route geometry is drawn on the map. |
+| Map tile URLs | `RidaMapView` via osmdroid and `GoogleTileSources`. | The app requests Google road/satellite tile URLs directly from `mt0`–`mt3.google.com`; night mode transforms road tiles on-device. These are map imagery requests, not passenger/business API calls. The source file itself notes the URLs are not an official public API. |
+| Device location | `HomeMapScreen` / `RidaMapView` | Android location permission and Google Play fused-location APIs provide device location. This is on-device location access, not a server integration. |
+| Google Credential Manager | `SignInScreen` and `CreateAccountScreen` | Requests a Google ID token through Credential Manager and stores the returned identity and token in local DataStore. No first-party backend verifies the token or creates a server session. |
+
+The code search found no first-party HTTP routes, Firebase/Supabase client, GraphQL client, WebSocket, or socket implementation. `MapServiceFactory` is the only Retrofit factory.
+
+## Screen-by-screen data and integration status
+
+“Local” means Android memory/DataStore; “mock” means sample/simulated app data; “static” means text/options embedded in code. A screen may display a server-shaped UI while still having no server connection.
+
+| Screen(s) | What the UI currently reads or does | Verified status |
+|---|---|---|
+| `OnboardingScreen` | Intro content; actions navigate to sign-in or account creation. | Static/navigation only. |
+| `SignInScreen` | Validates email/Tanzania phone format and password length locally; derives a display name/handle; saves a local session. Google sign-in obtains a Google ID token and saves it locally. | No password verification or first-party server session; the Google token is not verified by a backend. |
+| `CreateAccountScreen` | Collects name, phone, email, password; local validation; saves values to `SessionManager`. Also offers Google sign-in through Credential Manager. | No registration request, OTP/phone verification, email verification, or server-created account. |
+| `ForgotPasswordScreen` | Validates identifier locally, sets the local “sent” state and invokes a navigation callback. | No reset request or confirmation from a server. |
+| `HomeMapScreen` | Location, destination search, route/distance/duration, ride choices, fare estimates, recents, saved Home/Work, selected payment string, active ride. | Nominatim search + OSRM routing are live. Fare formulas, product prices, trust metrics, shared-ride cards, driver pins, and ride state are local/mock. Recent queries and Home/Work strings use DataStore. Booking calls `RideRepository`, not a server. |
+| `RideDetailsScreen` | Active/completed/history trip summary, map, phase actions, call/message/share, cancel, ride again. | Ride states and driver location are mock. Historical destination map pin uses Nominatim search. Start/complete/cancel actions mutate `RideRepository`; call/message use hard-coded `+255700000000`; share opens Android chooser. |
+| `RideHistoryScreen` / Activity | Filters and displays completed/shared entries; tap opens details. | Reads in-memory `RideRepository.history`; seeded sample rows. A completed mock ride is inserted at runtime. No durable/server history or paging. The “Completed” filter currently selects `!isShared`, so it is effectively a non-shared filter. |
+| `ProfileScreen` | Name/handle from local session; ride counts from mock ride history; static rating; menu navigation. | Name/handle are DataStore; counts are mock/local; rating is a literal. No profile fetch. |
+| `AccountScreen` | Account/help/menu options and a default passenger rating. | Static display and navigation callbacks; no account data source. |
+| `PersonalInfoScreen` | Edits name, phone, email then writes to `SessionManager`. | Local DataStore update only; no server profile update or verification. |
+| `SavedPlacesScreen` + `AddAddressScreen` | Home/Work strings, one initial custom place, add/edit forms, use-place handoff. | Home/Work persist in DataStore. Custom places exist only in a Compose state list and start with the hard-coded Mlimani City entry. Address map is a drawn illustration; search text is not geocoded; no coordinates are saved. Add/edit is an overlay within Saved Places. |
+| `PaymentMethodsScreen` (legacy route) | Selects Cash, Mobile money, or Card; payment selection appears on Home. | Saves only a method-name string in DataStore. No actual method/token, mobile-money provider selection, card collection, payment verification, or charge. The visible legacy options differ from the newer flow’s provider list. |
+| `PayMethodsFlowScreen`, `AddMethodScreen`, `PayHistoryScreen`, `PayDetailScreen`, `PayTripScreen` | New flow models for cash/mobile money, provider setup, masked method list, verification states, payment history/detail, trip payment. | `PaymentFlowNav` injects `FakePayments`; callback handlers are empty or mutate local state. `PAY_HISTORY` also gets fake history. No payment processor/server call. Normal Home navigation opens the legacy local `PaymentMethodsScreen`, not this flow. |
+| `ScheduleRideScreen` | Text pickup/dropoff, fixed day/time choices, fixed vehicle products/prices, upcoming schedule list, cancel. | `RideRepository.scheduled` is in-memory. Confirm/cancel changes local state only. Values are labels, not resolved coordinates or server-confirmed bookings. |
+| `PackageRideScreen` | Pickup/dropoff, parcel size, recipient name/phone, fixed size fare, request courier. | Validates fields locally, then submits to the ordinary mock `RideRepository.requestRide` with an option label `Package • size`. It is not a separate delivery/order flow; recipient name/phone are not attached to the mock ride. |
+| `SafetyScreen` / `SafetyCenterScreen` | SOS, share trip text, support call, trusted-contact affordance, safety tips. | SOS and hotline open the device dialer. Sharing opens Android chooser with local ride text. “Trusted contacts” only opens a blank dialer. `SafetyCenterScreen` is a separate flow UI and receives callbacks/data; no safety service call is wired. |
+| `RidePreferencesScreen` | Quiet ride, extra pickup time, share trip status, precise location toggles. | Toggle state is Compose-local and resets on screen recreation. Save shows a toast/callback only. Despite `AppPrefs` having some preference keys, this screen does not read/write them. |
+| `CommunicationSettingsScreen` | Ride updates, trip messages, promotions and email/SMS/push preference toggles. | All toggles are local Compose state; no persistence or notification service registration. This screen is not wired into the current `SettingsScreen` route callback. |
+| `LanguageSettingsScreen` | English/Kiswahili selection and save callback. | Selection is local; no language persistence or app locale switch. Not wired in current `AppNavGraph` settings callbacks. |
+| `SettingsScreen` | Navigation to communication, language, ride preferences, calendar/schedule, privacy, security, legal, logout. | Screen is static; route callbacks are supplied by `AppNavGraph`. Current wiring sends Communication to Ride Preferences, Language to no-op, Privacy to Safety, Security to Personal Info, Legal to Help Articles. |
+| `PrivacySecurityScreen` | Privacy/security choices including password, two-step, location permission, personal data, delete account. | Display/callback shell only. Not currently wired in `AppNavGraph`; no settings/account-security operations occur from this screen. |
+| `LegalPoliciesScreen`, `TermsDialog`, `PrivacyDialog` | Legal/policy copy and dialog actions. | Embedded static copy. No remote legal content/version acknowledgement. `LegalPoliciesScreen` is not directly wired; current Settings “Legal” opens Help Articles. |
+| `HelpFaqScreen` | Fixed FAQ questions and answers. | Static local content. |
+| `HelpHubScreen`, `HelpCenterScreen`, `HelpArticlesScreen`, `HelpArticleScreen`, `TripHelpScreen`, `SelectIssueCategoryScreen`, `SelectRideIssueScreen` | Help navigation, sample recent trip/issues, locally filtered article topics, hard-coded article and trip data, issue choices, feedback affordance. | Static/sample content and callbacks. No article catalog/search service, trip lookup, issue submission, or feedback write. Some legacy help screens are wired from `AppNavGraph`; article/help content remains hard-coded. |
+| `SupportHomeScreen`, `TopicScreen`, `SelfHelpScreen`, `RequestFormScreen`, `ConfirmScreen`, `MyRequestsScreen`, `RequestDetailScreen`, `SafetyCenterScreen`, `MySupportCasesScreen`, `ReportIssueScreen`, `CaseDetailsScreen` | New ticket topic/self-help/form/attachment/ticket-thread/status/rating flow. | `SupportFlowNav` injects `FakeSupport`; submit navigates to a fixed ticket ID `R-1042`, replies/resolution/rating callbacks are no-ops, and attachments are placeholder filenames. No ticket, upload, conversation, or rating request. Normal support screens use a separate legacy flow. |
+| `TransactionsScreen` | Static transaction/receipt content with local filter selection. | Not connected to a payment data source; no request found. |
+| `PromotionDetailsScreen` | Static promotion details and apply callback. | No offer retrieval, eligibility check, or application request. Not wired in current navigation. |
+| `ContactUsScreen` | Phone, email and WhatsApp contact options. | Phone/email launch Android intents; WhatsApp displays a toast. No in-app support request. |
+
+## New flow routing status
+
+`AppNavGraph` registers `PAY_FLOW`, `PROFILE_FLOW`, and `SUPPORT_FLOW`, but a repository-wide search found no normal navigation call to those routes. `FlowGallery`/`FlowDebugActivity` make the flows available for preview/debug. The normal payment path uses the older local selector; normal profile/settings/support paths use the existing screens and callbacks. Treat the new payment/profile/support UI as prototype flow coverage, not integrated production behavior.
+
+## What this audit can and cannot establish
+
+The passenger UI shows the data and actions that would need backing to become real: passenger identity/profile, ride quote and booking lifecycle, driver assignment/location, durable ride history, saved places, schedules, payment method/transaction state, preferences, help content, and support cases. Those are product-level data needs inferred from the screens. This repository does not establish their authoritative schema, API paths, authentication protocol, provider, payment rails, or which screens are intended for release. Those decisions require the actual backend contract/product requirements; this report deliberately does not invent them.

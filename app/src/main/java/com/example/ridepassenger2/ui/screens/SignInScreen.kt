@@ -1,5 +1,6 @@
 package com.example.ridepassenger2.ui.screens
 
+import android.widget.Toast
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
@@ -77,8 +78,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.credentials.exceptions.GetCredentialCancellationException
 import com.example.ridepassenger2.R
 import com.example.ridepassenger2.data.local.AuthValidation
+import com.example.ridepassenger2.data.local.GoogleAuthManager
 import com.example.ridepassenger2.data.local.SessionManager
 import com.example.ridepassenger2.ui.components.RidaLogo
 import kotlinx.coroutines.launch
@@ -146,9 +149,9 @@ fun SignInScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
         ) {
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(10.dp))
             RidaLogo(modifier = Modifier.padding(top = 4.dp), green = RidaPrimary)
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(12.dp))
 
             BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                 val artworkWidth = (maxWidth * 0.43f).coerceAtMost(168.dp)
@@ -177,15 +180,12 @@ fun SignInScreen(
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(6.dp))
 
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .shadow(2.dp, RoundedCornerShape(24.dp))
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Color.White)
-                    .padding(top = 20.dp, bottom = 16.dp)
+                    .padding(top = 6.dp, bottom = 8.dp)
             ) {
                 Text(
                     text = "Email or Phone Number",
@@ -193,7 +193,7 @@ fun SignInScreen(
                     fontWeight = FontWeight.SemiBold,
                     color = RidaInk
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 AuthTextField(
                     value = identifier,
                     onValueChange = {
@@ -217,7 +217,7 @@ fun SignInScreen(
                 )
                 AuthError(idError)
 
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(10.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -281,30 +281,43 @@ fun SignInScreen(
                 )
                 AuthError(pwError)
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(6.dp))
                 RememberMeRow(
                     checked = rememberMe,
                     onCheckedChange = { rememberMe = it }
                 )
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(14.dp))
                 GradientSignInButton(
                     enabled = !isLoading,
                     loading = isLoading,
                     onClick = ::doSignIn
                 )
 
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(12.dp))
                 AuthOrDivider()
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(12.dp))
                 GoogleSignInButton(
                     onClick = {
                         if (isLoading) return@GoogleSignInButton
                         scope.launch {
                             isLoading = true
                             try {
-                                SessionManager.save(context, "Google Rider", "@google")
-                                onGoogle()
+                                val result = GoogleAuthManager.signIn(context)
+                                if (result.isSuccess) {
+                                    val googleUser = result.getOrNull()!!
+                                    SessionManager.saveGoogleSession(context, googleUser)
+                                    onGoogle()
+                                } else {
+                                    val err = result.exceptionOrNull()
+                                    if (err !is GetCredentialCancellationException) {
+                                        Toast.makeText(
+                                            context,
+                                            "Google Sign-In failed: ${err?.localizedMessage ?: "Unknown error"}",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
                             } finally {
                                 isLoading = false
                             }
@@ -314,7 +327,7 @@ fun SignInScreen(
                 )
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(10.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -401,6 +414,7 @@ private fun AuthTextField(
             unfocusedContainerColor = RidaField,
             focusedBorderColor = RidaPrimary,
             unfocusedBorderColor = RidaFieldBorder,
+            disabledBorderColor = Color.Transparent,
             errorBorderColor = Color(0xFFD92D20),
             cursorColor = RidaPrimary,
             focusedPlaceholderColor = RidaHint,
