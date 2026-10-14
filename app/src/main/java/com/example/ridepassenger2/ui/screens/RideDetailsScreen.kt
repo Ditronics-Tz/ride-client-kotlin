@@ -26,11 +26,11 @@ import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 import androidx.compose.ui.tooling.preview.Preview
 import org.osmdroid.util.GeoPoint
 
-private val DetailsBg = Color(0xFF0C1014)
-private val SheetBg = Color(0xFF101418)
-private val SheetBorder = Color(0xFF1C252D)
-private val MintRoute = Color(0xFF43D2A1)
-private val MintDot = Color(0xFF4ADE80)
+private val DetailsBg = Color(0xFFF6F8F7)
+private val SheetBg = Color.White
+private val SheetBorder = Color(0xFFDCE8E3)
+private val MintRoute = Color(0xFF00C878)
+private val MintDot = Color(0xFF00B368)
 
 @Composable
 fun RideDetailsScreen(
@@ -99,7 +99,7 @@ fun RideDetailsScreen(
             zoom = if (useSnapshot && (snapshot!!.distanceM ?: 9999.0) < 3000) 15.0 else 13.5,
             useGoogleTiles = false,
             useSatellite = false,
-            useDarkTiles = true,
+            useDarkTiles = false,
             currentLocation = snapshot?.origin,
             destination = if (useSnapshot) snapshot!!.destination else histDest,
             routePoints = if (useSnapshot) snapshot!!.points else emptyList(),
@@ -126,9 +126,9 @@ fun RideDetailsScreen(
                         .clickable(onClick = onBack),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    Text(text = "‹", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Light)
+                    Text(text = "‹", color = Color(0xFF111827), fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 }
-                Text(text = "Ride Details", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text(text = "Ride Details", color = Color(0xFF111827), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.size(32.dp))
             }
         }
@@ -149,15 +149,15 @@ fun RideDetailsScreen(
                         modifier = Modifier
                             .size(48.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF181F26))
-                            .border(1.dp, Color(0xFF26313B), CircleShape),
+                            .background(Color(0xFFEEF5F2))
+                            .border(1.dp, Color(0xFFDCE8E3), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(text = "🚗", fontSize = 20.sp)
                     }
                     Column {
-                        Text(text = showTitle, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                        Text(text = showSubtitle, color = Color(0xFF7B8893), fontSize = 12.sp)
+                        Text(text = showTitle, color = Color(0xFF111827), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text(text = showSubtitle, color = Color(0xFF667085), fontSize = 12.sp)
                     }
                 }
 
@@ -169,15 +169,15 @@ fun RideDetailsScreen(
                         RidePhase.SEARCHING -> {
                             Row(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-                                    .background(Color(0xFF141B20)).border(1.dp, Color(0xFF1E2730), RoundedCornerShape(14.dp))
+                                    .background(Color(0xFFFAFCFB)).border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(14.dp))
                                     .padding(13.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 3.dp, color = MintRoute)
                                 Column {
-                                    Text(text = "Finding your driver…", color = Color.White, fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
-                                    Text(text = "Usually under a minute", color = Color(0xFF6E7B86), fontSize = 11.5.sp)
+                                    Text(text = "Finding your driver…", color = Color(0xFF111827), fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
+                                    Text(text = "Usually under a minute", color = Color(0xFF667085), fontSize = 11.5.sp)
                                 }
                             }
                         }
@@ -201,7 +201,7 @@ fun RideDetailsScreen(
                                     .clickable(onClick = { RideRepository.markInTrip() })
                                     .padding(vertical = 13.dp),
                                 contentAlignment = Alignment.Center
-                            ) { Text(text = "I'm in — start trip", color = Color(0xFF0C1014), fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+                            ) { Text(text = "I'm in — start trip", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                         }
                         RidePhase.IN_TRIP -> {
                             PhaseBanner(
@@ -216,7 +216,7 @@ fun RideDetailsScreen(
                                     .clickable(onClick = { RideRepository.completeRide() })
                                     .padding(vertical = 13.dp),
                                 contentAlignment = Alignment.Center
-                            ) { Text(text = "Complete trip • $showPrice", color = Color(0xFF0C1014), fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+                            ) { Text(text = "Complete trip • $showPrice", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                         }
                         else -> Unit
                     }
@@ -227,17 +227,17 @@ fun RideDetailsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-                            .background(Color(0xFF0F2A1F)).border(1.dp, MintRoute.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
+                            .background(Color(0xFFECFDF5)).border(1.dp, Color(0xFFA7F3D0), RoundedCornerShape(14.dp))
                             .padding(13.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(MintRoute), contentAlignment = Alignment.Center) {
-                            Text(text = "✓", color = Color(0xFF0C1014), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text(text = "✓", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         }
                         Column {
-                            Text(text = "Trip completed • $showPrice", color = Color.White, fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
-                            Text(text = "Saved to Activity. Asante for riding Rida!", color = Color(0xFF6E7B86), fontSize = 11.5.sp)
+                            Text(text = "Trip completed • $showPrice", color = Color(0xFF065F46), fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
+                            Text(text = "Saved to Activity. Asante for riding Rida!", color = Color(0xFF047857), fontSize = 11.5.sp)
                         }
                     }
                 }
@@ -248,25 +248,25 @@ fun RideDetailsScreen(
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(
                             modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFF141B20)).border(1.dp, Color(0xFF1E2730), RoundedCornerShape(12.dp))
+                                .background(Color(0xFFFAFCFB)).border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(12.dp))
                                 .clickable {
                                     try { context.startActivity(android.content.Intent(android.content.Intent.ACTION_DIAL, "tel:+255700000000".toUri())) }
                                     catch (_: Exception) { android.widget.Toast.makeText(context, "Calling driver…", android.widget.Toast.LENGTH_SHORT).show() }
                                 }.padding(vertical = 11.dp),
                             contentAlignment = Alignment.Center
-                        ) { Text(text = "📞 Call", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
+                        ) { Text(text = "📞 Call", color = Color(0xFF111827), fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
                         Box(
                             modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFF141B20)).border(1.dp, Color(0xFF1E2730), RoundedCornerShape(12.dp))
+                                .background(Color(0xFFFAFCFB)).border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(12.dp))
                                 .clickable {
                                     try { context.startActivity(android.content.Intent(android.content.Intent.ACTION_SENDTO, "smsto:+255700000000".toUri())) }
                                     catch (_: Exception) { android.widget.Toast.makeText(context, "Messaging driver…", android.widget.Toast.LENGTH_SHORT).show() }
                                 }.padding(vertical = 11.dp),
                             contentAlignment = Alignment.Center
-                        ) { Text(text = "💬 Message", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
+                        ) { Text(text = "💬 Message", color = Color(0xFF111827), fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
                         Box(
                             modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFF141B20)).border(1.dp, Color(0xFF1E2730), RoundedCornerShape(12.dp))
+                                .background(Color(0xFFFAFCFB)).border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(12.dp))
                                 .clickable {
                                     val r = liveRide
                                     val text = if (r != null) "I'm in a Rida ${r.option}: ${r.pickup} → ${r.destination}, driver ${r.driver?.name ?: ""} ${r.driver?.plate ?: ""}." else "My Rida trip."
@@ -274,32 +274,32 @@ fun RideDetailsScreen(
                                     catch (_: Exception) { }
                                 }.padding(vertical = 11.dp),
                             contentAlignment = Alignment.Center
-                        ) { Text(text = "📤 Share", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
+                        ) { Text(text = "📤 Share", color = Color(0xFF111827), fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
-                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF182128)))
+                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFE8EFF0)))
 
                 Spacer(modifier = Modifier.height(14.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(text = "◷", color = Color(0xFF8695A2), fontSize = 14.sp)
-                            Text(text = showEta, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            Text(text = "◷", color = Color(0xFF667085), fontSize = 14.sp)
+                            Text(text = showEta, color = Color(0xFF111827), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
-                        Text(text = if (liveRide != null) "Pickup time" else "Duration", color = Color(0xFF6B7884), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
+                        Text(text = if (liveRide != null) "Pickup time" else "Duration", color = Color(0xFF667085), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
                     }
                     Column {
-                        Text(text = showPrice, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                        Text(text = "Total fare", color = Color(0xFF6B7884), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
+                        Text(text = showPrice, color = Color(0xFF111827), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(text = "Total fare", color = Color(0xFF667085), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
                     }
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(text = "👥", color = Color(0xFF8695A2), fontSize = 14.sp)
-                            Text(text = "2/3", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            Text(text = "👥", color = Color(0xFF667085), fontSize = 14.sp)
+                            Text(text = "2/3", color = Color(0xFF111827), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
-                        Text(text = "Seats filled", color = Color(0xFF6B7884), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
+                        Text(text = "Seats filled", color = Color(0xFF667085), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
                     }
                 }
 
@@ -310,18 +310,18 @@ fun RideDetailsScreen(
                     Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(top = 4.dp)) {
                             Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(MintDot))
-                            Box(modifier = Modifier.width(1.dp).height(36.dp).background(Color(0xFF33404D)))
+                            Box(modifier = Modifier.width(1.dp).height(36.dp).background(Color(0xFFDCE8E3)))
                         }
                         Column {
-                            Text(text = pickupLabel, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                            Text(text = "Pickup (exact location)", color = Color(0xFF6F7D89), fontSize = 12.sp)
+                            Text(text = pickupLabel, color = Color(0xFF111827), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                            Text(text = "Pickup (exact location)", color = Color(0xFF667085), fontSize = 12.sp)
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Box(modifier = Modifier.size(10.dp).clip(CircleShape).border(2.dp, Color.White, CircleShape))
+                        Box(modifier = Modifier.size(10.dp).clip(CircleShape).border(2.dp, Color(0xFF111827), CircleShape))
                         Column {
-                            Text(text = dropoffLabel, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                            Text(text = "Drop-off (approx.)", color = Color(0xFF6F7D89), fontSize = 12.sp)
+                            Text(text = dropoffLabel, color = Color(0xFF111827), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                            Text(text = "Drop-off (approx.)", color = Color(0xFF667085), fontSize = 12.sp)
                         }
                     }
                 }
@@ -333,8 +333,8 @@ fun RideDetailsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFF141B20))
-                        .border(1.dp, Color(0xFF1E2730), RoundedCornerShape(16.dp))
+                        .background(Color(0xFFEEF5F2))
+                        .border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(16.dp))
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -343,14 +343,14 @@ fun RideDetailsScreen(
                         modifier = Modifier
                             .size(32.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF182622)),
+                            .background(MintRoute.copy(alpha = 0.15f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(text = "🍃", fontSize = 16.sp, color = MintDot)
                     }
                     Column {
-                        Text(text = "You're sharing this ride", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                        Text(text = "Good for your wallet. Better for the planet.", color = Color(0xFF6E7B86), fontSize = 11.sp)
+                        Text(text = "You're sharing this ride", color = Color(0xFF111827), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(text = "Good for your wallet. Better for the planet.", color = Color(0xFF667085), fontSize = 11.sp)
                     }
                 }
 
@@ -362,12 +362,12 @@ fun RideDetailsScreen(
                             .fillMaxWidth()
                             .height(52.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF161C22))
-                            .border(1.dp, Color(0xFF232D36), RoundedCornerShape(12.dp))
+                            .background(Color(0xFFFAFCFB))
+                            .border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(12.dp))
                             .clickable(onClick = { RideRepository.cancelRide(); RideRepository.selectHistory(null); onCancel() }),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "Cancel Ride", color = Color.White, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                        Text(text = "Cancel Ride", color = Color(0xFFD92D20), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                 } else if (receipt != null) {
                     // Receipt: ride again re-requests the same route, Done files it away.
@@ -385,7 +385,7 @@ fun RideDetailsScreen(
                             }),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "Ride again • $showPrice", color = Color(0xFF0C1014), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(text = "Ride again • $showPrice", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                     Spacer(modifier = Modifier.height(10.dp))
                     Box(
@@ -393,12 +393,12 @@ fun RideDetailsScreen(
                             .fillMaxWidth()
                             .height(52.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF161C22))
-                            .border(1.dp, Color(0xFF232D36), RoundedCornerShape(12.dp))
+                            .background(Color(0xFFFAFCFB))
+                            .border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(12.dp))
                             .clickable(onClick = { RideRepository.consumeCompleted(); RideRepository.selectHistory(null); onCancel() }),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "Done", color = Color.White, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                        Text(text = "Done", color = Color(0xFF111827), fontWeight = FontWeight.Medium, fontSize = 14.sp)
                     }
                 } else if (selected != null) {
                     // History view: Book again re-requests the same route, Close clears selection.
@@ -410,15 +410,13 @@ fun RideDetailsScreen(
                             .background(MintRoute)
                             .clickable(onClick = {
                                 RideRepository.selectHistory(null)
-                                // No coordinates for old history rows — drop any stale
-                                // route so the engine + map don't show the wrong trip.
                                 RideRepository.clearRoute()
                                 RideRepository.requestRide(pickupLabel, dropoffLabel, showPrice, showTitle, 10)
                                 onCancel()
                             }),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "Book again • $showPrice", color = Color(0xFF0C1014), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(text = "Book again • $showPrice", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                     Spacer(modifier = Modifier.height(10.dp))
                     Box(
@@ -426,12 +424,12 @@ fun RideDetailsScreen(
                             .fillMaxWidth()
                             .height(52.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF161C22))
-                            .border(1.dp, Color(0xFF232D36), RoundedCornerShape(12.dp))
+                            .background(Color(0xFFFAFCFB))
+                            .border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(12.dp))
                             .clickable(onClick = { RideRepository.selectHistory(null); onCancel() }),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "Close", color = Color.White, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                        Text(text = "Close", color = Color(0xFF111827), fontWeight = FontWeight.Medium, fontSize = 14.sp)
                     }
                 } else {
                     // Empty: no live ride, no receipt, no history selection.
@@ -444,13 +442,13 @@ fun RideDetailsScreen(
                             .clickable(onClick = { onCancel() }),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "Find a ride", color = Color(0xFF0C1014), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(text = "Find a ride", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
                 Box(modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                    HomeIndicator(color = Color.White.copy(alpha = 0.3f))
+                    HomeIndicator(color = Color(0xFF111827).copy(alpha = 0.2f))
                 }
             }
         }
@@ -461,15 +459,15 @@ fun RideDetailsScreen(
 private fun PhaseBanner(dot: Color, title: String, subtitle: String) {
     Row(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-            .background(Color(0xFF141B20)).border(1.dp, Color(0xFF1E2730), RoundedCornerShape(14.dp))
+            .background(Color(0xFFEEF5F2)).border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(14.dp))
             .padding(13.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(dot))
         Column {
-            Text(text = title, color = Color.White, fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
-            if (subtitle.isNotBlank()) Text(text = subtitle, color = Color(0xFF6E7B86), fontSize = 11.5.sp)
+            Text(text = title, color = Color(0xFF111827), fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
+            if (subtitle.isNotBlank()) Text(text = subtitle, color = Color(0xFF667085), fontSize = 11.5.sp)
         }
     }
 }

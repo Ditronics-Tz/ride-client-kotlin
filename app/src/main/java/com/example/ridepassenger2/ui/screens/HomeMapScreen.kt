@@ -57,25 +57,25 @@ import kotlinx.coroutines.launch
 import org.osmdroid.util.GeoPoint
 
 // ---------------------------------------------------------------------------
-// Palette — dark home, matched to reference (dark map + dark sheet + mint)
+// Palette — clean light home (Rida mint + white sheet + light map)
 // ---------------------------------------------------------------------------
-private val DarkPageBg = Color(0xFF0A0F14)
-private val DarkSheetBg = Color(0xFF101418)
-private val DarkCardBg = Color(0xFF181F26)
-private val DarkCardBg2 = Color(0xFF151C22)
-private val DarkBorder = Color(0xFF26313B)
-private val DarkDivider = Color(0xFF232D36)
-private val DarkPill = Color(0xFF1C252D)
+private val DarkPageBg = Color(0xFFF4F8F6)
+private val DarkSheetBg = Color.White
+private val DarkCardBg = Color(0xFFFAFCFB)
+private val DarkCardBg2 = Color(0xFFF0F5F3)
+private val DarkBorder = Color(0xFFDCE8E3)
+private val DarkDivider = Color(0xFFE8EFF0)
+private val DarkPill = Color(0xFFEEF5F2)
 
-private val DarkTitle = Color.White
-private val DarkBody = Color(0xFFF3F4F6)
-private val DarkMuted = Color(0xFF9CA3AF)
-private val DarkFaint = Color(0xFF6B7884)
-private val DarkChevron = Color(0xFF3A4653)
+private val DarkTitle = Color(0xFF111827)
+private val DarkBody = Color(0xFF374151)
+private val DarkMuted = Color(0xFF667085)
+private val DarkFaint = Color(0xFF98A6A0)
+private val DarkChevron = Color(0xFF9CA3AF)
 
-private val Mint = Color(0xFF43D2A1)
-private val MintSoft = Color(0xFF35C48E)
-private val OnMintDark = Color(0xFF0C1014)
+private val Mint = Color(0xFF00C878)
+private val MintSoft = Color(0xFF00B368)
+private val OnMintDark = Color.White
 
 private val DarCenter = GeoPoint(-6.7924, 39.2083)
 
@@ -271,7 +271,7 @@ fun HomeMapScreen(
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 // Drag handle
-                Box(modifier = Modifier.align(Alignment.CenterHorizontally).width(36.dp).height(4.dp).clip(RoundedCornerShape(999.dp)).background(Color(0xFF2A3540)))
+                Box(modifier = Modifier.align(Alignment.CenterHorizontally).width(36.dp).height(4.dp).clip(RoundedCornerShape(999.dp)).background(Color(0xFFDCE8E3)))
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // Bolt category chips — green family to match the home design.
@@ -490,7 +490,7 @@ fun HomeMapScreen(
                     zoom = mapZoom,
                     useGoogleTiles = false,
                     useSatellite = false,
-                    useDarkTiles = true,
+                    useDarkTiles = false,
                     currentLocation = currentLocation,
                     destination = destination,
                     routePoints = routePoints,

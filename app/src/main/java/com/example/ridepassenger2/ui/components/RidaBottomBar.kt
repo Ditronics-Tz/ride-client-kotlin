@@ -18,9 +18,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 
 // Dark bar — locked to the home palette
-private val BarBg = Color(0xFF101418)
-private val BarGreen = Color(0xFF43D2A1)
-private val BarInactive = Color(0xFF9CA3AF)
+private val BarBg = Color.White
+private val BarGreen = Color(0xFF00C878)
+private val BarInactive = Color(0xFF667085)
 
 /**
  * Dark bottom bar matching the home screen. Active tab is green.

@@ -167,15 +167,12 @@ fun ForgotPasswordScreen(
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(6.dp))
 
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .shadow(2.dp, RoundedCornerShape(24.dp))
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Color.White)
-                    .padding(top = 20.dp, bottom = 16.dp)
+                    .padding(top = 6.dp, bottom = 8.dp)
             ) {
                 Text(
                     text = "Email or Phone Number",
@@ -183,7 +180,7 @@ fun ForgotPasswordScreen(
                     fontWeight = FontWeight.SemiBold,
                     color = RidaInk
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 AuthTextField(
                     value = identifier,
                     onValueChange = {
@@ -210,7 +207,7 @@ fun ForgotPasswordScreen(
                 AuthError(error)
 
                 if (sent) {
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(12.dp))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -237,14 +234,14 @@ fun ForgotPasswordScreen(
                     }
                 }
 
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(14.dp))
                 GradientPrimaryButton(
                     text = if (sent) "Resend Link" else "Send Reset Link",
                     onClick = ::doSendReset
                 )
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(10.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -329,8 +326,8 @@ private fun AuthTextField(
             unfocusedTextColor = RidaInk,
             focusedContainerColor = RidaField,
             unfocusedContainerColor = RidaField,
-            focusedBorderColor = Color.Transparent,
-            unfocusedBorderColor = Color.Transparent,
+            focusedBorderColor = RidaPrimary,
+            unfocusedBorderColor = RidaFieldBorder,
             disabledBorderColor = Color.Transparent,
             errorBorderColor = Color(0xFFD92D20),
             cursorColor = RidaPrimary,

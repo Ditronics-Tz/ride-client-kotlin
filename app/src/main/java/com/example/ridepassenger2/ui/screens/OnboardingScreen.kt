@@ -129,14 +129,11 @@ fun OnboardingScreen(
                 )
             }
 
-            // Bottom Actions Card
+            // Bottom Actions Container
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .shadow(2.dp, RoundedCornerShape(24.dp))
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Color.White)
-                    .padding(20.dp)
+                    .padding(vertical = 12.dp)
             ) {
                 GradientPrimaryButton(
                     text = "Get Started",
