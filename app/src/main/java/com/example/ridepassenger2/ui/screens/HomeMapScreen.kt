@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -28,6 +29,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
@@ -39,6 +41,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ridepassenger2.data.local.AppPrefs
 import com.example.ridepassenger2.data.mock.ActiveRide
 import com.example.ridepassenger2.data.mock.RidePhase
 import com.example.ridepassenger2.data.mock.RideRepository
@@ -543,24 +546,21 @@ fun HomeMapScreen(
                             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(DarkDivider))
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                                 Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(MintSoft))
-                                TextField(
+                                BasicTextField(
                                     value = query,
                                     onValueChange = { query = it; searchFocused = true },
-                                    placeholder = { Text(text = "Where to?", fontSize = 13.sp, color = DarkFaint) },
                                     modifier = Modifier.weight(1f),
                                     singleLine = true,
                                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                    keyboardActions = KeyboardActions(onSearch = { searchResults.firstOrNull()?.let { p -> val gp = GeoPoint(p.lat.toDouble(), p.lon.toDouble()); destination = gp; destinationLabel = p.displayName.substringBefore(","); query = p.displayName.substringBefore(","); searchFocused = false; searchResults = emptyList(); keyboardController?.hide(); scope.launch { com.example.ridepassenger2.data.local.AppPrefs.pushRecent(context, query) } } }),
-                                    colors = TextFieldDefaults.colors(
-                                        focusedContainerColor = Color.Transparent,
-                                        unfocusedContainerColor = Color.Transparent,
-                                        focusedIndicatorColor = Color.Transparent,
-                                        unfocusedIndicatorColor = Color.Transparent,
-                                        focusedTextColor = DarkTitle,
-                                        unfocusedTextColor = DarkTitle,
-                                        cursorColor = Mint
-                                    ),
-                                    textStyle = LocalTextStyle.current.copy(fontSize = 13.5.sp, color = DarkTitle)
+                                    keyboardActions = KeyboardActions(onSearch = { searchResults.firstOrNull()?.let { p -> val gp = GeoPoint(p.lat.toDouble(), p.lon.toDouble()); destination = gp; destinationLabel = p.displayName.substringBefore(","); query = p.displayName.substringBefore(","); searchFocused = false; searchResults = emptyList(); keyboardController?.hide(); scope.launch { AppPrefs.pushRecent(context, query) } } }),
+                                    textStyle = LocalTextStyle.current.copy(fontSize = 13.5.sp, color = DarkTitle),
+                                    cursorBrush = SolidColor(Mint),
+                                    decorationBox = { innerTextField ->
+                                        if (query.isEmpty()) {
+                                            Text(text = "Where to?", fontSize = 13.sp, color = DarkFaint)
+                                        }
+                                        innerTextField()
+                                    }
                                 )
                                 if (query.isNotEmpty()) Box(modifier = Modifier.clip(CircleShape).background(DarkPill).clickable { query = ""; destination = null; destinationLabel = null; routePoints = emptyList(); searchResults = emptyList() }.padding(6.dp)) { Text(text = "✕", fontSize = 10.sp, color = DarkMuted) }
                                 else Box(modifier = Modifier.size(30.dp).clip(CircleShape).background(DarkPill).border(1.dp, DarkBorder, CircleShape).clickable { if (!isPermissionGranted) permissionState?.launchPermissionRequest() else fetchLocation() }, contentAlignment = Alignment.Center) { Text(text = "◎", color = Mint, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
