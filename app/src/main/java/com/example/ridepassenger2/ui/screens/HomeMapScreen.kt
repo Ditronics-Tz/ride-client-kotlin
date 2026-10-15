@@ -249,380 +249,130 @@ fun HomeMapScreen(
         )
     }
 
-    val sheetState = rememberBottomSheetScaffoldState(
-        bottomSheetState = rememberStandardBottomSheetState(initialValue = SheetValue.PartiallyExpanded, skipHiddenState = true)
-    )
-    val sheetPeek = 232.dp
+    Box(modifier = Modifier.fillMaxSize().background(DarkPageBg)) {
+        RidaMapView(
+            modifier = Modifier.fillMaxSize(),
+            center = mapCenter,
+            zoom = mapZoom,
+            useGoogleTiles = false,
+            useSatellite = false,
+            useDarkTiles = false,
+            currentLocation = currentLocation,
+            destination = destination,
+            routePoints = routePoints,
+            driverLocations = if (driverPin != null && busy) listOf(driverPin!!) else driverPins,
+            enableMyLocation = isPermissionGranted
+        )
 
-    BottomSheetScaffold(
-        scaffoldState = sheetState,
-        sheetPeekHeight = sheetPeek,
-        sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        sheetContainerColor = DarkSheetBg,
-        sheetContentColor = DarkTitle,
-        sheetShadowElevation = 16.dp,
-        sheetDragHandle = null,
-        sheetSwipeEnabled = true,
-        sheetContent = {
-            Column(
+        Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 16.dp)) {
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Compact top bar — Rida + location + search in ONE slim card,
+            // leaving maximum room for the map underneath.
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .shadow(8.dp, RoundedCornerShape(20.dp), ambientColor = Color.Black.copy(alpha = 0.4f))
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(DarkCardBg2.copy(alpha = 0.96f))
+                    .border(1.dp, DarkBorder, RoundedCornerShape(20.dp))
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
             ) {
-                // Drag handle
-                Box(modifier = Modifier.align(Alignment.CenterHorizontally).width(36.dp).height(4.dp).clip(RoundedCornerShape(999.dp)).background(Color(0xFFDCE8E3)))
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Bolt category chips — green family to match the home design.
-                // Active = solid green, inactive = dark with green outline + green text.
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    items(listOf("Ride" to RidaIcons.Rides, "Share" to RidaIcons.Users, "Schedule" to RidaIcons.Calendar, "Package" to RidaIcons.Package)) { (label, icon) ->
-                        val active = selectedTab == label
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) { repeat(2) { Box(modifier = Modifier.width(4.dp).height(14.dp).clip(RoundedCornerShape(4.dp)).background(Mint)) } }
+                            Text(text = "Rida", color = DarkTitle, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        }
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(999.dp))
-                                .background(if (active) MintSoft else DarkPill)
-                                .border(1.dp, if (active) MintSoft else Mint.copy(alpha = 0.35f), RoundedCornerShape(999.dp))
-                                .clickable {
-                                    when (label) {
-                                        "Share" -> { selectedTab = label }
-                                        "Schedule" -> onSchedule()
-                                        "Package" -> onPackage()
-                                        else -> selectedTab = label
-                                    }
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(DarkCardBg)
+                                .border(1.dp, DarkBorder, CircleShape)
+                                .clickable(onClick = onProfile),
+                            contentAlignment = Alignment.Center
+                        ) { Text(text = "DM", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkTitle) }
+                    }
+                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(DarkDivider))
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                        Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(MintSoft))
+                        BasicTextField(
+                            value = query,
+                            onValueChange = { query = it; searchFocused = true },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardActions = KeyboardActions(onSearch = { searchResults.firstOrNull()?.let { p -> val gp = GeoPoint(p.lat.toDouble(), p.lon.toDouble()); destination = gp; destinationLabel = p.displayName.substringBefore(","); query = p.displayName.substringBefore(","); searchFocused = false; searchResults = emptyList(); keyboardController?.hide(); scope.launch { AppPrefs.pushRecent(context, query) } } }),
+                            textStyle = LocalTextStyle.current.copy(fontSize = 13.5.sp, color = DarkTitle),
+                            cursorBrush = SolidColor(Mint),
+                            decorationBox = { innerTextField ->
+                                if (query.isEmpty()) {
+                                    Text(text = "Where to?", fontSize = 13.sp, color = DarkFaint)
                                 }
-                                .padding(horizontal = 14.dp, vertical = 8.dp)
-                        ) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                RidaIcon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = if (active) OnMintDark else Mint)
-                                Text(text = label, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = if (active) OnMintDark else Mint)
+                                innerTextField()
                             }
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(14.dp))
-
-                if (destination == null) {
-                    // Saved places — tap uses the saved query, long-press path via manager
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SavedPlaceCard(icon = RidaIcons.Home, title = "Home", subtitle = savedHome ?: "Set home", modifier = Modifier.weight(1f), onClick = {
-                            val h = savedHome
-                            if (h.isNullOrBlank()) onSavedPlaces() else { query = h; searchFocused = true }
-                        })
-                        SavedPlaceCard(icon = RidaIcons.Work, title = "Work", subtitle = savedWork ?: "Set work", modifier = Modifier.weight(1f), onClick = {
-                            val w = savedWork
-                            if (w.isNullOrBlank()) onSavedPlaces() else { query = w; searchFocused = true }
-                        })
-                    }
-                    Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End) {
-                        Text(
-                            text = "Manage", fontSize = 11.5.sp, color = Mint, fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onSavedPlaces).padding(4.dp)
                         )
-                        RidaIcon(RidaIcons.Forward, contentDescription = null, modifier = Modifier.size(16.dp), tint = Mint)
+                        if (query.isNotEmpty()) Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(DarkPill).clickable { query = ""; destination = null; destinationLabel = null; routePoints = emptyList(); searchResults = emptyList() }, contentAlignment = Alignment.Center) { RidaIcon(RidaIcons.Close, contentDescription = "Clear search", modifier = Modifier.size(18.dp), tint = DarkMuted) }
                     }
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Recent — live: stored searches + history, Clear actually clears
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(22.dp).clip(CircleShape).background(DarkPill), contentAlignment = Alignment.Center) { RidaIcon(RidaIcons.History, contentDescription = null, modifier = Modifier.size(14.dp), tint = DarkMuted) }
-                            Text(text = "Recent", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = DarkTitle)
-                        }
-                        Text(
-                            text = "Clear", fontSize = 11.sp, color = DarkMuted, fontWeight = FontWeight.Medium,
-                            modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable {
-                                scope.launch { com.example.ridepassenger2.data.local.AppPrefs.clearRecents(context) }
-                            }.padding(6.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        val recentRows: List<Pair<String, String>> = when {
-                            storedRecents.isNotEmpty() -> storedRecents.take(4).map { it to "Search again" }
-                            else -> historyItems.take(3).map { it.route to "${it.date} • ${it.price}" }
-                        }
-                        if (recentRows.isEmpty()) {
-                            Text(text = "No recent places yet — search above.", fontSize = 11.5.sp, color = DarkMuted)
-                        }
-                        recentRows.forEach { (route, meta) ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(DarkCardBg)
-                                    .border(1.dp, DarkBorder, RoundedCornerShape(12.dp))
-                                    .clickable { query = route.substringAfter("→").trim(); searchFocused = true }
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(DarkPill), contentAlignment = Alignment.Center) { RidaIcon(RidaIcons.History, contentDescription = null, modifier = Modifier.size(18.dp), tint = DarkMuted) }
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(text = route, fontSize = 12.5.sp, fontWeight = FontWeight.Medium, color = DarkBody)
-                                    Text(text = meta, fontSize = 11.sp, color = DarkMuted)
-                                }
-                                RidaIcon(RidaIcons.ChevronRight, contentDescription = null, modifier = Modifier.size(18.dp), tint = DarkChevron)
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    // Payment method — Bolt sheet row
-                    PaymentRow(method = paymentMethod, onChange = { showPaymentSheet = true })
-                    Spacer(modifier = Modifier.height(16.dp))
-                } else {
-                    // Route summary header
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Mint.copy(alpha = 0.10f))
-                            .border(1.dp, Mint.copy(alpha = 0.22f), RoundedCornerShape(14.dp))
-                            .padding(12.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(Mint), contentAlignment = Alignment.Center) { RidaIcon(RidaIcons.Forward, contentDescription = null, modifier = Modifier.size(16.dp), tint = OnMintDark) }
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(text = destinationLabel ?: "Your trip", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = DarkTitle)
-                                Text(text = "$etaText • ${routeDistanceM?.let { "%.1f km".format(it / 1000) } ?: ""} • via OSRM", fontSize = 11.sp, color = DarkMuted)
-                            }
-                            Box(modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(Mint).clickable { destination = null; query = ""; routePoints = emptyList() }.padding(horizontal = 9.dp, vertical = 5.dp)) {
-                                Text(text = "Change", color = OnMintDark, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // Live ride status replaces the options while a ride is active
-                    val ride = activeRide
-                    if (ride == null) {
-                    if (selectedTab == "Share") {
-                        SharedRidesSection { item ->
-                            snapshotRoute()
-                            RideRepository.requestRide(
-                                pickup = "Your location",
-                                destination = destinationLabel ?: "Destination",
-                                price = item.price,
-                                option = "Shared",
-                                etaMin = routeDurationS?.div(60)?.toInt() ?: 10
-                            )
-                        }
-                    } else {
-                    // Choose a ride
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(22.dp).clip(CircleShape).background(Mint.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) { RidaIcon(RidaIcons.Rides, contentDescription = null, modifier = Modifier.size(16.dp), tint = Mint) }
-                            Text(text = "Choose a ride", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = DarkTitle)
-                        }
-                        Box(modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(DarkPill).padding(horizontal = 8.dp, vertical = 4.dp)) {
-                            Text(text = "$etaText · ${routeDistanceM?.let { "%.1f km".format(it / 1000) } ?: ""}", fontSize = 11.sp, color = DarkMuted, fontWeight = FontWeight.Medium)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        PremiumRideOption(title = "Standard", subtitle = "1–4 seats · Shared rides", price = priceText, eta = etaText, badge = "Popular", selected = selectedOption == "Standard", onClick = { selectedOption = "Standard" })
-                        PremiumRideOption(title = "Comfort", subtitle = "1–4 seats · Extra legroom", price = run { val d = (routeDistanceM ?: 4500.0) / 1000; "TZS ${"%,d".format(3500 + (d * 380).toInt())}" }, eta = run { val s = (routeDurationS ?: 720.0) + 120; "${(s / 60).toInt()} min" }, selected = selectedOption == "Comfort", onClick = { selectedOption = "Comfort" })
-                        PremiumRideOption(title = "XL", subtitle = "1–6 seats · Group rides", price = run { val d = (routeDistanceM ?: 4500.0) / 1000; "TZS ${"%,d".format(5000 + (d * 420).toInt())}" }, eta = run { val s = (routeDurationS ?: 900.0) + 180; "${(s / 60).toInt()} min" }, selected = selectedOption == "XL", onClick = { selectedOption = "XL" })
-                    }
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Trust row
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(DarkCardBg2)
-                            .border(1.dp, DarkBorder.copy(alpha = 0.7f), RoundedCornerShape(12.dp))
-                            .padding(10.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        TrustItem("4.8", "Drivers", showRatingStar = true)
-                        Box(modifier = Modifier.width(1.dp).height(28.dp).background(DarkBorder))
-                        TrustItem("2 min", "Avg pickup")
-                        Box(modifier = Modifier.width(1.dp).height(28.dp).background(DarkBorder))
-                        TrustItem("24/7", "Support")
-                    }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    // Payment method — live selection
-                    PaymentRow(method = paymentMethod, onChange = { showPaymentSheet = true })
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // CTA — mint with dark text (reference)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(54.dp)
-                            .shadow(6.dp, RoundedCornerShape(16.dp), ambientColor = Mint.copy(alpha = 0.30f))
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(MintSoft)
-                            .clickable(onClick = {
-                                snapshotRoute()
-                                RideRepository.requestRide(
-                                    pickup = "Your location",
-                                    destination = destinationLabel ?: "Destination",
-                                    price = priceText,
-                                    option = selectedOption,
-                                    etaMin = routeDurationS?.div(60)?.toInt() ?: 10
-                                )
-                            }),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = "Request Ride", color = OnMintDark, fontWeight = FontWeight.Bold, fontSize = 14.5.sp)
-                    }
-                    }
-                    } else {
-                        RideStatusCard(
-                            phase = ride.phase,
-                            ride = ride,
-                            onCancel = { RideRepository.cancelRide() }
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-        },
-        content = {
-            // Map + header + search overlay — dark
-            Box(modifier = Modifier.fillMaxSize().background(DarkPageBg)) {
-                RidaMapView(
-                    modifier = Modifier.fillMaxSize(),
-                    center = mapCenter,
-                    zoom = mapZoom,
-                    useGoogleTiles = false,
-                    useSatellite = false,
-                    useDarkTiles = false,
-                    currentLocation = currentLocation,
-                    destination = destination,
-                    routePoints = routePoints,
-                    driverLocations = if (driverPin != null && busy) listOf(driverPin!!) else driverPins,
-                    enableMyLocation = isPermissionGranted
-                )
-
-                Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 16.dp)) {
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    // Compact top bar — Rida + location + search in ONE slim card,
-                    // leaving maximum room for the map underneath.
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(8.dp, RoundedCornerShape(20.dp), ambientColor = Color.Black.copy(alpha = 0.4f))
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(DarkCardBg2.copy(alpha = 0.96f))
-                            .border(1.dp, DarkBorder, RoundedCornerShape(20.dp))
-                            .padding(horizontal = 12.dp, vertical = 10.dp)
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) { repeat(2) { Box(modifier = Modifier.width(4.dp).height(14.dp).clip(RoundedCornerShape(4.dp)).background(Mint)) } }
-                                    Text(text = "Rida", color = DarkTitle, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                                }
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Column(horizontalAlignment = Alignment.End) {
-                                        Text(text = "Your location", fontSize = 10.sp, color = DarkMuted, fontWeight = FontWeight.Medium)
-                                        Text(
-                                            text = if (isPermissionGranted) (currentLocation?.let { "%.4f, %.4f".format(it.latitude, it.longitude) } ?: "Locating…") else "Tap to enable GPS",
-                                            fontSize = 11.5.sp,
-                                            color = DarkBody,
-                                            fontWeight = FontWeight.SemiBold,
-                                            maxLines = 1
-                                        )
-                                    }
-                                    Box(
-                                        modifier = Modifier
-                                            .size(32.dp)
-                                            .clip(CircleShape)
-                                            .background(DarkCardBg)
-                                            .border(1.dp, DarkBorder, CircleShape)
-                                            .clickable(onClick = onProfile),
-                                        contentAlignment = Alignment.Center
-                                    ) { Text(text = "DM", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkTitle) }
-                                }
-                            }
-                            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(DarkDivider))
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                                Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(MintSoft))
-                                BasicTextField(
-                                    value = query,
-                                    onValueChange = { query = it; searchFocused = true },
-                                    modifier = Modifier.weight(1f),
-                                    singleLine = true,
-                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                    keyboardActions = KeyboardActions(onSearch = { searchResults.firstOrNull()?.let { p -> val gp = GeoPoint(p.lat.toDouble(), p.lon.toDouble()); destination = gp; destinationLabel = p.displayName.substringBefore(","); query = p.displayName.substringBefore(","); searchFocused = false; searchResults = emptyList(); keyboardController?.hide(); scope.launch { AppPrefs.pushRecent(context, query) } } }),
-                                    textStyle = LocalTextStyle.current.copy(fontSize = 13.5.sp, color = DarkTitle),
-                                    cursorBrush = SolidColor(Mint),
-                                    decorationBox = { innerTextField ->
-                                        if (query.isEmpty()) {
-                                            Text(text = "Where to?", fontSize = 13.sp, color = DarkFaint)
-                                        }
-                                        innerTextField()
-                                    }
-                                )
-                                if (query.isNotEmpty()) Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(DarkPill).clickable { query = ""; destination = null; destinationLabel = null; routePoints = emptyList(); searchResults = emptyList() }, contentAlignment = Alignment.Center) { RidaIcon(RidaIcons.Close, contentDescription = "Clear search", modifier = Modifier.size(18.dp), tint = DarkMuted) }
-                                else Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(DarkPill).border(1.dp, DarkBorder, CircleShape).clickable { if (!isPermissionGranted) permissionState?.launchPermissionRequest() else fetchLocation() }, contentAlignment = Alignment.Center) { RidaIcon(RidaIcons.Locate, contentDescription = "Use current location", modifier = Modifier.size(20.dp), tint = Mint) }
-                            }
-                        }
-                    }
-
-                    // Nominatim results — dark dropdown under the search card
-                    AnimatedVisibility(visible = searchFocused && (isSearching || searchError || searchResults.isNotEmpty())) {
-                        Box(modifier = Modifier.padding(top = 8.dp).fillMaxWidth().shadow(8.dp, RoundedCornerShape(16.dp)).clip(RoundedCornerShape(16.dp)).background(DarkCardBg2).border(1.dp, DarkBorder, RoundedCornerShape(16.dp))) {
-                            if (isSearching) Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Mint)
-                                Text(text = "Searching Nominatim…", fontSize = 12.sp, color = DarkMuted)
-                            } else if (searchError) Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                RidaIcon(RidaIcons.Warning, contentDescription = null, modifier = Modifier.size(18.dp), tint = DarkMuted)
-                                Text(text = "Couldn't search — check your connection and retry", fontSize = 12.sp, color = DarkMuted)
-                            } else LazyColumn(modifier = Modifier.heightIn(max = 220.dp)) {
-                                items(searchResults) { place ->
-                                    Row(modifier = Modifier.fillMaxWidth().clickable { val gp = GeoPoint(place.lat.toDouble(), place.lon.toDouble()); destination = gp; destinationLabel = place.displayName.substringBefore(","); query = place.displayName.substringBefore(","); searchFocused = false; searchResults = emptyList(); keyboardController?.hide(); scope.launch { com.example.ridepassenger2.data.local.AppPrefs.pushRecent(context, query) } }.padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                        Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(DarkPill), contentAlignment = Alignment.Center) { RidaIcon(RidaIcons.SavedPlace, contentDescription = null, modifier = Modifier.size(16.dp), tint = Mint) }
-                                        Column(modifier = Modifier.weight(1f)) { Text(text = place.displayName.substringBefore(","), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = DarkTitle); Text(text = place.displayName, fontSize = 11.sp, color = DarkMuted, maxLines = 1) }
-                                    }
-                                    if (place != searchResults.last()) Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(DarkDivider))
-                                }
-                                item { Text(text = "Tiles: Google (night) • Search: Nominatim • Route: OSRM", modifier = Modifier.padding(10.dp), fontSize = 9.sp, color = DarkFaint) }
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-
-                // Safety + re-center rail — Bolt-style right side
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 16.dp, bottom = 252.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .shadow(6.dp, CircleShape)
-                            .clip(CircleShape)
-                            .background(DarkCardBg)
-                            .border(1.dp, DarkBorder, CircleShape)
-                            .clickable(onClick = onSafety),
-                        contentAlignment = Alignment.Center
-                    ) { RidaIcon(RidaIcons.Safety, contentDescription = "Safety", modifier = Modifier.size(20.dp), tint = Mint) }
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .shadow(6.dp, CircleShape)
-                            .clip(CircleShape)
-                            .background(DarkCardBg)
-                            .border(1.dp, DarkBorder, CircleShape)
-                            .clickable { if (!isPermissionGranted) permissionState?.launchPermissionRequest() else fetchLocation() },
-                        contentAlignment = Alignment.Center
-                    ) { RidaIcon(RidaIcons.Locate, contentDescription = "Use current location", modifier = Modifier.size(20.dp), tint = Mint) }
                 }
             }
+
+            // Nominatim results — dark dropdown under the search card
+            AnimatedVisibility(visible = searchFocused && (isSearching || searchError || searchResults.isNotEmpty())) {
+                Box(modifier = Modifier.padding(top = 8.dp).fillMaxWidth().shadow(8.dp, RoundedCornerShape(16.dp)).clip(RoundedCornerShape(16.dp)).background(DarkCardBg2).border(1.dp, DarkBorder, RoundedCornerShape(16.dp))) {
+                    if (isSearching) Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Mint)
+                        Text(text = "Searching Nominatim…", fontSize = 12.sp, color = DarkMuted)
+                    } else if (searchError) Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        RidaIcon(RidaIcons.Warning, contentDescription = null, modifier = Modifier.size(18.dp), tint = DarkMuted)
+                        Text(text = "Couldn't search — check your connection and retry", fontSize = 12.sp, color = DarkMuted)
+                    } else LazyColumn(modifier = Modifier.heightIn(max = 220.dp)) {
+                        items(searchResults) { place ->
+                            Row(modifier = Modifier.fillMaxWidth().clickable { val gp = GeoPoint(place.lat.toDouble(), place.lon.toDouble()); destination = gp; destinationLabel = place.displayName.substringBefore(","); query = place.displayName.substringBefore(","); searchFocused = false; searchResults = emptyList(); keyboardController?.hide(); scope.launch { AppPrefs.pushRecent(context, query) } }.padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(DarkPill), contentAlignment = Alignment.Center) { RidaIcon(RidaIcons.SavedPlace, contentDescription = null, modifier = Modifier.size(16.dp), tint = Mint) }
+                                Column(modifier = Modifier.weight(1f)) { Text(text = place.displayName.substringBefore(","), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = DarkTitle); Text(text = place.displayName, fontSize = 11.sp, color = DarkMuted, maxLines = 1) }
+                            }
+                            if (place != searchResults.last()) Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(DarkDivider))
+                        }
+                        item { Text(text = "Tiles: Google (night) • Search: Nominatim • Route: OSRM", modifier = Modifier.padding(10.dp), fontSize = 9.sp, color = DarkFaint) }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.weight(1f))
         }
-    )
+
+        // Safety + re-center rail — Bolt-style right side
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .navigationBarsPadding()
+                .padding(end = 16.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .shadow(6.dp, CircleShape)
+                    .clip(CircleShape)
+                    .background(DarkCardBg)
+                    .border(1.dp, DarkBorder, CircleShape)
+                    .clickable(onClick = onSafety),
+                contentAlignment = Alignment.Center
+            ) { RidaIcon(RidaIcons.Safety, contentDescription = "Safety", modifier = Modifier.size(20.dp), tint = Mint) }
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .shadow(6.dp, CircleShape)
+                    .clip(CircleShape)
+                    .background(DarkCardBg)
+                    .border(1.dp, DarkBorder, CircleShape)
+                    .clickable { if (!isPermissionGranted) permissionState?.launchPermissionRequest() else fetchLocation() },
+                contentAlignment = Alignment.Center
+            ) { RidaIcon(RidaIcons.Locate, contentDescription = "Use current location", modifier = Modifier.size(20.dp), tint = Mint) }
+        }
+    }
 
     // Pending saved-place handoff (SavedPlaces "Go here" → search + focus)
     LaunchedEffect(Unit) {
