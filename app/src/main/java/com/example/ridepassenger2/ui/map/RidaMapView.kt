@@ -31,6 +31,7 @@ import com.example.ridepassenger2.ui.components.RidaIcon
 import com.example.ridepassenger2.ui.components.RidaIcons
 import org.osmdroid.config.Configuration
 import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
@@ -106,17 +107,19 @@ fun RidaMapView(
         view.apply {
             setTileSource(initialSource)
             setMultiTouchControls(true)
+            zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
             controller.setZoom(zoom)
             controller.setCenter(center)
             // crisp tiles on high-dpi
             isTilesScaledToDpi = true
-            // Dark canvas everywhere: unloaded regions and the loading grid
-            // stay near-black so new areas never flash white while 512px
-            // tiles download + night-transform.
-            setBackgroundColor(AndroidColor.parseColor("#0A0F14"))
+            // Canvas background and tile loading grid colors match map theme:
+            // White for light tiles so unloaded areas show clean white, dark for dark tiles.
+            val bg = if (useDarkTiles) AndroidColor.parseColor("#0A0F14") else AndroidColor.WHITE
+            val lineBg = if (useDarkTiles) AndroidColor.parseColor("#1C252D") else AndroidColor.parseColor("#F5F5F5")
+            setBackgroundColor(bg)
             overlayManager.tilesOverlay.apply {
-                setLoadingBackgroundColor(AndroidColor.parseColor("#0A0F14"))
-                setLoadingLineColor(AndroidColor.parseColor("#1C252D"))
+                setLoadingBackgroundColor(bg)
+                setLoadingLineColor(lineBg)
             }
         }
     }
@@ -125,6 +128,13 @@ fun RidaMapView(
     // NOTE: on the night provider every source is night-transformed by the
     // loader, so switching sources here can never leak a bright tile.
     LaunchedEffect(useGoogleTiles, useSatellite, useDarkTiles) {
+        val bg = if (useDarkTiles) AndroidColor.parseColor("#0A0F14") else AndroidColor.WHITE
+        val lineBg = if (useDarkTiles) AndroidColor.parseColor("#1C252D") else AndroidColor.parseColor("#F5F5F5")
+        mapView.setBackgroundColor(bg)
+        mapView.overlayManager.tilesOverlay.apply {
+            setLoadingBackgroundColor(bg)
+            setLoadingLineColor(lineBg)
+        }
         mapView.setTileSource(
             when {
                 useSatellite -> GoogleTileSources.GoogleSatelliteHD
