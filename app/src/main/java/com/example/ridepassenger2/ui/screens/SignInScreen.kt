@@ -101,11 +101,11 @@ fun SignInScreen(
     onSignUp: () -> Unit,
     onGoogle: () -> Unit
 ) {
-    var identifier by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(true) }
     var passwordVisible by remember { mutableStateOf(false) }
-    var idError by remember { mutableStateOf<String?>(null) }
+    var emailError by remember { mutableStateOf<String?>(null) }
     var pwError by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var formError by remember { mutableStateOf<String?>(null) }
@@ -114,34 +114,31 @@ fun SignInScreen(
 
     fun doSignIn() {
         if (isLoading) return
-        idError = AuthValidation.identifierError(identifier)
+        emailError = AuthValidation.emailError(email)
         pwError = AuthValidation.passwordError(password)
-        if (idError != null || pwError != null) return
+        if (emailError != null || pwError != null) return
 
-        val (name, handle) = AuthValidation.displayFor(identifier)
         scope.launch {
             isLoading = true
             formError = null
             try {
-                val loginReq = LoginRequest(
-                    identifier = identifier.trim(),
-                    password = password
-                )
+                val loginReq = LoginRequest(email = email.trim(), password = password)
                 val sessionResp = RidaApiClient.api.login(loginReq)
                 val user = sessionResp.user
                 SessionManager.save(
                     context = context,
-                    name = user.name.ifBlank { name },
-                    handle = handle,
+                    name = user.name.orEmpty(),
+                    handle = user.email?.substringBefore("@")?.let { "@$it" } ?: "",
                     phone = user.phone ?: "",
-                    email = user.email ?: "",
+                    email = user.email ?: email.trim(),
+                    profileCompleted = sessionResp.isProfileComplete(),
                     accessToken = sessionResp.getEffectiveAccessToken(),
                     refreshToken = sessionResp.getEffectiveRefreshToken()
                 )
                 UserRepository.refreshSessionFromApi(context)
                 onSignIn()
             } catch (e: Exception) {
-                formError = e.message ?: "Sign in failed. Check your details and try again."
+                formError = com.example.ridepassenger2.data.remote.RidaApiErrors.message(e, "Sign in failed. Check your email and password.")
             } finally {
                 isLoading = false
             }
@@ -203,19 +200,19 @@ fun SignInScreen(
                     .padding(top = 6.dp, bottom = 8.dp)
             ) {
                 Text(
-                    text = "Email or Phone Number",
+                    text = "Email address",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = RidaInk
                 )
                 Spacer(Modifier.height(4.dp))
                 AuthTextField(
-                    value = identifier,
+                    value = email,
                     onValueChange = {
-                        identifier = it
-                        idError = null
+                        email = it
+                        emailError = null
                     },
-                    placeholder = "you@example.com or 07XXXXXXXX",
+                    placeholder = "you@example.com",
                     leadingIcon = {
                         RidaIcon(
                             icon = RidaIcons.Mail,
@@ -228,9 +225,9 @@ fun SignInScreen(
                         keyboardType = KeyboardType.Email,
                         imeAction = ImeAction.Next
                     ),
-                    isError = idError != null
+                    isError = emailError != null
                 )
-                AuthError(idError)
+                AuthError(emailError)
 
                 Spacer(Modifier.height(10.dp))
                 Row(

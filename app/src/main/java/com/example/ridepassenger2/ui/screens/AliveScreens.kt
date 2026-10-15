@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -694,7 +695,7 @@ fun PackageRideScreen(onBack: () -> Unit = {}, onSent: () -> Unit = {}) {
                 .clip(RoundedCornerShape(18.dp))
                 .background(XMintBtn)
                 .clickable {
-                    phoneError = AuthValidation.identifierError(phone.ifBlank { " " })
+                    phoneError = AuthValidation.phoneError(phone.ifBlank { " " })
                     if (dropoff.isBlank()) {
                         Toast.makeText(context, "Enter a drop-off first", Toast.LENGTH_SHORT).show()
                         return@clickable
@@ -713,7 +714,7 @@ fun PackageRideScreen(onBack: () -> Unit = {}, onSent: () -> Unit = {}) {
 }
 
 @Composable
-private fun ScheduleField(label: String, value: String, placeholder: String = "", onChange: (String) -> Unit) {
+private fun ScheduleField(label: String, value: String, placeholder: String = "", keyboardType: androidx.compose.ui.text.input.KeyboardType = androidx.compose.ui.text.input.KeyboardType.Text, onChange: (String) -> Unit) {
     Column {
         Text(text = label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = XTitle)
         Spacer(modifier = Modifier.height(6.dp))
@@ -721,6 +722,7 @@ private fun ScheduleField(label: String, value: String, placeholder: String = ""
             value = value, onValueChange = onChange,
             placeholder = { Text(text = placeholder.ifBlank { label }, fontSize = 13.sp, color = XMuted) },
             singleLine = true, modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = keyboardType),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = XCard, unfocusedContainerColor = XCard,
                 focusedTextColor = XTitle, unfocusedTextColor = XTitle,
@@ -926,42 +928,182 @@ fun PersonalInfoScreen(onBack: () -> Unit = {}) {
     val scope = rememberCoroutineScope()
     val session by SessionManager.observe(context).collectAsState(initial = SessionManager.Session())
     var name by remember(session.name) { mutableStateOf(session.name) }
-    var phone by remember(session.phone) { mutableStateOf(session.phone) }
-    var email by remember(session.email) { mutableStateOf(session.email) }
-    var err by remember { mutableStateOf<String?>(null) }
+    var editingName by remember { mutableStateOf(session.name.isNotBlank()) }
+    var nameError by remember { mutableStateOf<String?>(null) }
+    var nameSaving by remember { mutableStateOf(false) }
+    var phoneDraft by remember(session.phone) { mutableStateOf(session.phone) }
+    var editingPhone by remember { mutableStateOf(false) }
+    var phoneError by remember { mutableStateOf<String?>(null) }
+    var otp by remember { mutableStateOf("") }
+    var otpSent by remember { mutableStateOf(false) }
+    var phoneLoading by remember { mutableStateOf(false) }
 
     AliveScaffold(title = "Personal Information", onBack = onBack) {
-        ScheduleField("Full name", name) { name = it }
-        Spacer(modifier = Modifier.height(12.dp))
-        ScheduleField("Phone", phone, "+255 7XX XXX XXX") { phone = it }
-        Spacer(modifier = Modifier.height(12.dp))
-        ScheduleField("Email", email, "you@example.com") { email = it }
-        if (err != null) Text(text = err!!, fontSize = 12.sp, color = Color(0xFFD92D20), modifier = Modifier.padding(top = 6.dp))
-        Spacer(modifier = Modifier.height(20.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .shadow(4.dp, RoundedCornerShape(18.dp), ambientColor = XMintBtn.copy(alpha = 0.2f))
-                .clip(RoundedCornerShape(18.dp))
-                .background(XMintBtn)
-                .clickable {
-                    if (name.trim().length < 2) { err = "Enter your full name"; return@clickable }
-                    scope.launch {
-                        val result = UserRepository.updateProfileOnServer(context, name.trim())
-                        if (result.isSuccess) {
-                            SessionManager.updateProfile(context, name.trim(), phone.trim(), email.trim())
-                            Toast.makeText(context, "Profile saved", Toast.LENGTH_SHORT).show()
-                            onBack()
-                        } else {
-                            err = result.exceptionOrNull()?.message ?: "Could not save profile"
-                        }
+        Text("Your profile details", fontSize = 14.sp, color = XMuted)
+        Spacer(Modifier.height(16.dp))
+
+        if (!editingName) {
+            Text("Full name", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = XTitle)
+            Text(session.name.ifBlank { "Not added" }, fontSize = 14.sp, color = if (session.name.isBlank()) XMuted else XTitle, modifier = Modifier.padding(top = 6.dp))
+            TextButton(onClick = { name = session.name; editingName = true; nameError = null }) {
+                Text(if (session.name.isBlank()) "Add name" else "Edit name")
+            }
+        } else {
+            ScheduleField("Full name", name, "Enter your full name") {
+                name = it
+                nameError = null
+            }
+            if (nameError != null) {
+                Text(nameError!!, fontSize = 12.sp, color = Color(0xFFD92D20), modifier = Modifier.padding(top = 4.dp))
+            }
+            Spacer(Modifier.height(10.dp))
+            androidx.compose.material3.Button(
+                onClick = {
+                    val trimmed = name.trim()
+                    nameError = com.example.ridepassenger2.ui.common.NameRules.error(trimmed)
+                    if (nameError == null) scope.launch {
+                        nameSaving = true
+                        val result = UserRepository.updateProfileOnServer(context, trimmed)
+                        nameSaving = false
+                        result.fold(
+                            onSuccess = {
+                                editingName = false
+                                Toast.makeText(context, "Name saved", Toast.LENGTH_SHORT).show()
+                            },
+                            onFailure = { nameError = com.example.ridepassenger2.data.remote.RidaApiErrors.message(it, "Could not save your name. Try again.") }
+                        )
                     }
                 },
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = "Save changes", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                enabled = !nameSaving && name.trim().isNotEmpty(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = XMintBtn)
+            ) {
+                if (nameSaving) androidx.compose.material3.CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White
+                ) else Text("Save name", color = Color.White, fontWeight = FontWeight.Bold)
+            }
         }
+
+        Spacer(Modifier.height(22.dp))
+        Text("Phone number", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = XTitle)
+        if (!editingPhone) {
+            Text(session.phone.ifBlank { "Not added" }, fontSize = 14.sp, color = if (session.phone.isBlank()) XMuted else XTitle, modifier = Modifier.padding(top = 6.dp))
+            TextButton(onClick = { phoneDraft = session.phone; editingPhone = true; phoneError = null }) {
+                Text(if (session.phone.isBlank()) "Add phone number" else "Edit phone number")
+            }
+        } else {
+            ScheduleField("Tanzania phone number", phoneDraft, "+255 712 345 678", androidx.compose.ui.text.input.KeyboardType.Phone) {
+                phoneDraft = it
+                phoneError = null
+                otpSent = false
+                otp = ""
+            }
+            if (phoneError != null) {
+                Text(phoneError!!, fontSize = 12.sp, color = Color(0xFFD92D20), modifier = Modifier.padding(top = 4.dp))
+            }
+            Spacer(Modifier.height(8.dp))
+            if (!otpSent) {
+                androidx.compose.material3.Button(
+                    onClick = {
+                        val normalized = com.example.ridepassenger2.ui.common.TzPhone.normalize(phoneDraft)
+                        if (normalized == null) {
+                            phoneError = "Enter a valid Tanzania phone number"
+                        } else {
+                            scope.launch {
+                                phoneLoading = true
+                                phoneError = null
+                                try {
+                                    RidaApiClient.api.requestOtp(com.example.ridepassenger2.data.remote.RequestOtpRequest(normalized))
+                                    otpSent = true
+                                } catch (e: Exception) {
+                                    phoneError = com.example.ridepassenger2.data.remote.RidaApiErrors.message(e, "Could not send a verification code. Try again.")
+                                } finally {
+                                    phoneLoading = false
+                                }
+                            }
+                        }
+                    },
+                    enabled = !phoneLoading,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = XMintBtn)
+                ) {
+                    if (phoneLoading) androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White
+                    ) else Text("Send verification code", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            } else {
+                Text("Enter the 6-digit code sent to $phoneDraft", fontSize = 12.sp, color = XMuted)
+                TextButton(
+                    enabled = !phoneLoading,
+                    onClick = {
+                        val normalized = com.example.ridepassenger2.ui.common.TzPhone.normalize(phoneDraft)
+                        if (normalized == null) {
+                            phoneError = "Enter a valid Tanzania phone number"
+                        } else {
+                            scope.launch {
+                                phoneLoading = true
+                                phoneError = null
+                                try {
+                                    RidaApiClient.api.requestOtp(com.example.ridepassenger2.data.remote.RequestOtpRequest(normalized))
+                                    otp = ""
+                                } catch (e: Exception) {
+                                    phoneError = com.example.ridepassenger2.data.remote.RidaApiErrors.message(e, "Could not resend the code. Try again.")
+                                } finally {
+                                    phoneLoading = false
+                                }
+                            }
+                        }
+                    }
+                ) { Text("Resend code") }
+                Spacer(Modifier.height(8.dp))
+                ScheduleField("Verification code", otp, "6-digit code", androidx.compose.ui.text.input.KeyboardType.Number) { value ->
+                    otp = value.filter(Char::isDigit).take(6)
+                    phoneError = null
+                }
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.material3.Button(
+                    onClick = {
+                        if (otp.length != 6) {
+                            phoneError = "Enter the 6-digit verification code"
+                        } else {
+                            scope.launch {
+                                phoneLoading = true
+                                phoneError = null
+                                try {
+                                    val verified = RidaApiClient.api.verifyOtp(com.example.ridepassenger2.data.remote.VerifyOtpRequest(otp))
+                                    val serverUser = verified.user
+                                    val normalized = com.example.ridepassenger2.ui.common.TzPhone.normalize(phoneDraft).orEmpty()
+                                    SessionManager.updateProfile(context, serverUser.name.orEmpty().ifBlank { session.name }, serverUser.phone ?: normalized, serverUser.email ?: session.email)
+                                    Toast.makeText(context, "Phone number verified", Toast.LENGTH_SHORT).show()
+                                    editingPhone = false
+                                    otpSent = false
+                                    otp = ""
+                                } catch (e: Exception) {
+                                    phoneError = com.example.ridepassenger2.data.remote.RidaApiErrors.message(e, "We couldn't verify that code. Check it and try again.")
+                                } finally {
+                                    phoneLoading = false
+                                }
+                            }
+                        }
+                    },
+                    enabled = !phoneLoading,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = XMintBtn)
+                ) {
+                    if (phoneLoading) androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White
+                    ) else Text("Verify phone number", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(22.dp))
+        Text("Email address", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = XTitle)
+        Text(session.email.ifBlank { "Not added" }, fontSize = 14.sp, color = if (session.email.isBlank()) XMuted else XTitle, modifier = Modifier.padding(top = 6.dp))
+        Text("Your email is used to sign in and can't be changed here.", fontSize = 12.sp, color = XMuted, modifier = Modifier.padding(top = 4.dp))
     }
 }
 

@@ -18,6 +18,7 @@ private val Context.sessionStore by preferencesDataStore("session")
 object SessionManager {
 
     private val LOGGED_IN = booleanPreferencesKey("logged_in")
+    private val PROFILE_COMPLETED = booleanPreferencesKey("profile_completed")
     private val NAME = stringPreferencesKey("name")
     private val HANDLE = stringPreferencesKey("handle")
     private val PHONE = stringPreferencesKey("phone")
@@ -28,23 +29,28 @@ object SessionManager {
 
     data class Session(
         val loggedIn: Boolean = false,
-        val name: String = "Rida Rider",
+        val name: String = "",
         val handle: String = "",
         val phone: String = "",
         val email: String = "",
+        val profileCompleted: Boolean? = null,
         val accessToken: String? = null,
         val refreshToken: String? = null,
         val profilePictureUrl: String? = null
-    )
+    ) {
+        val isProfileComplete: Boolean
+            get() = profileCompleted ?: (name.isNotBlank() && phone.isNotBlank())
+    }
 
     fun observe(context: Context): Flow<Session> =
         context.sessionStore.data.map { prefs ->
             Session(
                 loggedIn = prefs[LOGGED_IN] == true,
-                name = prefs[NAME] ?: "Rida Rider",
+                name = prefs[NAME].orEmpty().takeUnless { it == "Rida Rider" }.orEmpty(),
                 handle = prefs[HANDLE] ?: "",
                 phone = prefs[PHONE] ?: "",
                 email = prefs[EMAIL] ?: "",
+                profileCompleted = prefs[PROFILE_COMPLETED],
                 accessToken = prefs[ACCESS_TOKEN],
                 refreshToken = prefs[REFRESH_TOKEN],
                 profilePictureUrl = prefs[PROFILE_PIC]
@@ -60,16 +66,20 @@ object SessionManager {
         handle: String,
         phone: String = "",
         email: String = "",
+        profileCompleted: Boolean? = null,
         accessToken: String? = null,
         refreshToken: String? = null,
         profilePictureUrl: String? = null
     ) {
         context.sessionStore.edit { prefs ->
             prefs[LOGGED_IN] = true
-            prefs[NAME] = name.ifBlank { "Rida Rider" }
+            if (name.isBlank() || name.trim() == "Rida Rider") prefs.remove(NAME)
+            else prefs[NAME] = name.trim()
             prefs[HANDLE] = handle
             if (phone.isNotBlank()) prefs[PHONE] = phone
             if (email.isNotBlank()) prefs[EMAIL] = email
+            if (profileCompleted == null) prefs.remove(PROFILE_COMPLETED)
+            else prefs[PROFILE_COMPLETED] = profileCompleted
             if (!accessToken.isNullOrBlank()) prefs[ACCESS_TOKEN] = accessToken
             if (!refreshToken.isNullOrBlank()) prefs[REFRESH_TOKEN] = refreshToken
             if (!profilePictureUrl.isNullOrBlank()) prefs[PROFILE_PIC] = profilePictureUrl
@@ -82,7 +92,8 @@ object SessionManager {
     ) {
         context.sessionStore.edit { prefs ->
             prefs[LOGGED_IN] = true
-            prefs[NAME] = result.displayName.ifBlank { "Rida Rider" }
+            if (result.displayName.isBlank()) prefs.remove(NAME)
+            else prefs[NAME] = result.displayName.trim()
             prefs[HANDLE] = "@${result.email.substringBefore("@")}"
             prefs[EMAIL] = result.email
             prefs[ACCESS_TOKEN] = result.idToken
@@ -101,12 +112,13 @@ object SessionManager {
 
     suspend fun updateProfile(context: Context, name: String, phone: String, email: String) {
         context.sessionStore.edit { prefs ->
-            if (name.isNotBlank()) prefs[NAME] = name
-            if (phone.isNotBlank()) prefs[PHONE] = phone
+            if (name.isNotBlank()) prefs[NAME] = name.trim() else prefs.remove(NAME)
+            if (phone.isNotBlank()) prefs[PHONE] = phone else prefs.remove(PHONE)
             if (email.isNotBlank()) {
                 prefs[EMAIL] = email
                 if (prefs[HANDLE].isNullOrBlank()) prefs[HANDLE] = email
             }
+            prefs.remove(PROFILE_COMPLETED)
         }
     }
 
@@ -115,21 +127,17 @@ object SessionManager {
     }
 }
 
-/** Cheap shared validators for the mock auth forms. */
+/** Shared validation for email/password auth fields and non-auth phone forms. */
 object AuthValidation {
-    private val EMAIL = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
-    private val TZ_PHONE = Regex("^(\\+255|0)[67]\\d{8}$")
-
-    fun identifierError(value: String): String? {
-        val v = value.trim().replace(" ", "")
-        if (v.isEmpty()) return "Enter your email or phone number"
-        if ("@" in v) {
-            if (!EMAIL.matches(v)) return "That email doesn't look right"
-        } else if (!TZ_PHONE.matches(v)) {
-            return "Use a valid number like 0712 345 678"
+    fun emailError(value: String): String? =
+        com.example.ridepassenger2.ui.common.TzEmail.validate(value)?.let {
+            if (value.isBlank()) "Enter your email address" else "Enter a valid email address"
         }
-        return null
-    }
+
+    fun phoneError(value: String): String? =
+        if (com.example.ridepassenger2.ui.common.TzPhone.normalize(value) == null) {
+            "Enter a valid Tanzania phone number"
+        } else null
 
     fun passwordError(value: String): String? {
         if (value.isEmpty()) return "Enter your password"
@@ -137,21 +145,4 @@ object AuthValidation {
         return null
     }
 
-    fun nameError(value: String): String? {
-        if (value.trim().length < 2) return "Enter your full name"
-        return null
-    }
-
-    /** Display name + handle derived from the sign-in identifier. */
-    fun displayFor(identifier: String): Pair<String, String> {
-        val v = identifier.trim()
-        return if ("@" in v) {
-            val nick = v.substringBefore("@").replace(".", " ").replace("_", " ")
-                .split(" ").filter { it.isNotBlank() }
-                .joinToString(" ") { it.replaceFirstChar(Char::titlecase) }
-            nick.ifBlank { "Rida Rider" } to "@${v.substringBefore("@")}"
-        } else {
-            "Rida Rider" to v
-        }
-    }
 }

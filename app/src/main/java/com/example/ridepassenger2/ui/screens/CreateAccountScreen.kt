@@ -102,13 +102,10 @@ fun CreateAccountScreen(
     onPrivacy: () -> Unit = {},
     onGoogle: () -> Unit = {}
 ) {
-    var fullName by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var nameError by remember { mutableStateOf<String?>(null) }
-    var phoneError by remember { mutableStateOf<String?>(null) }
+    var emailError by remember { mutableStateOf<String?>(null) }
     var pwError by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var formError by remember { mutableStateOf<String?>(null) }
@@ -119,35 +116,32 @@ fun CreateAccountScreen(
 
     fun doCreate() {
         if (isLoading) return
-        nameError = AuthValidation.nameError(fullName)
-        phoneError = AuthValidation.identifierError(phone)
+        emailError = AuthValidation.emailError(email)
         pwError = AuthValidation.passwordError(password)
-        if (nameError != null || phoneError != null || pwError != null) return
-        val handle = email.trim().ifBlank { phone.trim() }
+        if (emailError != null || pwError != null) return
+        val normalizedEmail = email.trim()
+        val handle = "@${normalizedEmail.substringBefore("@")}"
         scope.launch {
             isLoading = true
             formError = null
             try {
-                val regReq = RegisterRequest(
-                    name = fullName.trim(),
-                    email = email.trim().ifBlank { "${phone.trim().replace(" ", "")}@rida.tz" },
-                    password = password
-                )
+                val regReq = RegisterRequest(email = normalizedEmail, password = password)
                 val sessionResp = RidaApiClient.api.register(regReq)
                 val user = sessionResp.user
                 SessionManager.save(
                     context = context,
-                    name = user.name.ifBlank { fullName.trim() },
-                    handle = handle,
-                    phone = user.phone ?: phone.trim(),
-                    email = user.email ?: email.trim(),
+                    name = user.name.orEmpty(),
+                    handle = user.email?.substringBefore("@")?.let { "@$it" } ?: handle,
+                    phone = user.phone.orEmpty(),
+                    email = user.email ?: normalizedEmail,
+                    profileCompleted = sessionResp.isProfileComplete(),
                     accessToken = sessionResp.getEffectiveAccessToken(),
                     refreshToken = sessionResp.getEffectiveRefreshToken()
                 )
                 UserRepository.refreshSessionFromApi(context)
                 onCreateAccount()
             } catch (e: Exception) {
-                formError = e.message ?: "Could not create account. Try again."
+                formError = com.example.ridepassenger2.data.remote.RidaApiErrors.message(e, "Could not create account. Check your connection and try again.")
             } finally {
                 isLoading = false
             }
@@ -216,63 +210,7 @@ fun CreateAccountScreen(
                     .padding(top = 6.dp, bottom = 8.dp)
             ) {
                 Text(
-                    text = "Full Name",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = RidaInk
-                )
-                Spacer(Modifier.height(4.dp))
-                AuthTextField(
-                    value = fullName,
-                    onValueChange = { fullName = it; nameError = null },
-                    placeholder = "Your full name",
-                    leadingIcon = {
-                        RidaIcon(
-                            icon = RidaIcons.Account,
-                            contentDescription = null,
-                            tint = RidaHint,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Text,
-                        imeAction = ImeAction.Next
-                    ),
-                    isError = nameError != null
-                )
-                AuthError(nameError)
-
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    text = "Phone Number",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = RidaInk
-                )
-                Spacer(Modifier.height(4.dp))
-                AuthTextField(
-                    value = phone,
-                    onValueChange = { phone = it; phoneError = null },
-                    placeholder = "+255 7XX XXX XXX",
-                    leadingIcon = {
-                        RidaIcon(
-                            icon = RidaIcons.Phone,
-                            contentDescription = null,
-                            tint = RidaHint,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Phone,
-                        imeAction = ImeAction.Next
-                    ),
-                    isError = phoneError != null
-                )
-                AuthError(phoneError)
-
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    text = "Email ",
+                    text = "Email address",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = RidaInk
@@ -280,7 +218,7 @@ fun CreateAccountScreen(
                 Spacer(Modifier.height(4.dp))
                 AuthTextField(
                     value = email,
-                    onValueChange = { email = it },
+                    onValueChange = { email = it; emailError = null },
                     placeholder = "you@example.com",
                     leadingIcon = {
                         RidaIcon(
@@ -293,8 +231,10 @@ fun CreateAccountScreen(
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Email,
                         imeAction = ImeAction.Next
-                    )
+                    ),
+                    isError = emailError != null
                 )
+                AuthError(emailError)
 
                 Spacer(Modifier.height(10.dp))
                 Text(

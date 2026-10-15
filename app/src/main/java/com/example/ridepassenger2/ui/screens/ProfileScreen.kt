@@ -66,9 +66,9 @@ private fun ProfileScreenInternal(
         RideRepository.refreshHistory()
     }
 
-    val displayName = session.name.ifBlank { "Rida Rider" }
-    val initials = displayName.split(" ").filter { it.isNotBlank() }.take(2)
-        .joinToString("") { it.first().uppercase() }.ifBlank { "RR" }
+    val displayName = session.name.ifBlank { "Name not added" }
+    val initials = session.name.trim().split(Regex("\\s+")).filter { it.isNotBlank() }.take(2)
+        .joinToString("") { it.first().uppercase() }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -118,11 +118,20 @@ private fun ProfileScreenInternal(
                         .border(1.5.dp, ProfMint.copy(alpha = 0.4f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = initials, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = ProfTitle)
+                    if (initials.isNotEmpty()) {
+                        Text(text = initials, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = ProfTitle)
+                    } else {
+                        RidaIcon(RidaIcons.Account, contentDescription = "User", modifier = Modifier.size(30.dp), tint = ProfMuted)
+                    }
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(text = displayName, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = ProfTitle)
-                Text(text = session.handle.ifBlank { "@rida_rider" }, fontSize = 12.sp, color = ProfMuted)
+                Text(text = session.email.ifBlank { "Email not added" }, fontSize = 12.sp, color = if (session.email.isBlank()) ProfMuted else ProfBody)
+                Text(
+                    text = session.phone.ifBlank { "Phone not added" },
+                    fontSize = 12.sp,
+                    color = if (session.phone.isBlank()) ProfMuted else ProfBody
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(text = "Rides. People. A better way.", fontSize = 12.sp, color = ProfMuted)
             }

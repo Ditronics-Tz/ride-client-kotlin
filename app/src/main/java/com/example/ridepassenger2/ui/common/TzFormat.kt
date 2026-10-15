@@ -12,7 +12,8 @@ object TzPhone {
 
     /** 0712... / 712... / +255712... -> +255712... or null when invalid. */
     fun normalize(raw: String): String? {
-        val digits = raw.filter { it.isDigit() }
+        if (raw.any { !it.isDigit() && !it.isWhitespace() && it !in "+()-" }) return null
+        val digits = raw.mapNotNull { it.digitToIntOrNull()?.digitToChar() }.joinToString("")
         val local = when {
             digits.startsWith("255") && digits.length == 12 -> digits.drop(3)
             digits.startsWith("0") && digits.length == 10 -> digits.drop(1)
@@ -124,7 +125,6 @@ object NameRules {
         val t = v.trim()
         if (t.length < 2) return "Jina fupi sana"
         if (t.length > 50) return "Jina refu sana"
-        if (!t.all { it.isLetter() || it == ' ' || it == '\'' || it == '-' }) return "Herufi pekee"
         return null
     }
 }

@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.ridepassenger2.data.local.SessionManager
 import com.example.ridepassenger2.data.remote.RidaApiClient
 import com.example.ridepassenger2.data.remote.UpdateProfileRequest
+import com.example.ridepassenger2.data.remote.RidaApiErrors
 import kotlinx.coroutines.flow.first
 
 object UserRepository {
@@ -17,10 +18,11 @@ object UserRepository {
                 ?: ""
             SessionManager.save(
                 context = context,
-                name = user.name,
+                name = user.name.orEmpty(),
                 handle = handle,
                 phone = user.phone ?: "",
-                email = user.email ?: ""
+                email = user.email ?: "",
+                profileCompleted = me.isProfileComplete()
             )
         } catch (_: Exception) { }
 
@@ -31,11 +33,12 @@ object UserRepository {
             val phone = profile["phone"] as? String
             val email = profile["email"] as? String
             if (!fullName.isNullOrBlank() || !phone.isNullOrBlank() || !email.isNullOrBlank()) {
+                val current = SessionManager.observe(context).first()
                 SessionManager.updateProfile(
                     context,
-                    fullName ?: "",
-                    phone ?: "",
-                    email ?: ""
+                    fullName ?: current.name,
+                    phone ?: current.phone,
+                    email ?: current.email
                 )
             }
         } catch (_: Exception) { }
@@ -48,7 +51,7 @@ object UserRepository {
             SessionManager.updateProfile(context, fullName, current.phone, current.email)
             Result.success(Unit)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(IllegalArgumentException(RidaApiErrors.message(e, "Could not save your profile. Try again."), e))
         }
     }
 }

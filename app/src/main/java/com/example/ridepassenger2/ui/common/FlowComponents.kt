@@ -31,6 +31,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import com.example.ridepassenger2.ui.components.RidaIcon
 import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.theme.RidaMintDark
@@ -111,9 +113,10 @@ fun RidaField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
+    modifier: Modifier = Modifier,
     placeholder: String = "",
     error: String? = null,
-    modifier: Modifier = Modifier
+    keyboardType: KeyboardType = KeyboardType.Text
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Text(text = label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
@@ -125,6 +128,7 @@ fun RidaField(
             singleLine = true,
             isError = error != null,
             supportingText = error?.let { { Text(text = it) } },
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier
                 .fillMaxWidth()

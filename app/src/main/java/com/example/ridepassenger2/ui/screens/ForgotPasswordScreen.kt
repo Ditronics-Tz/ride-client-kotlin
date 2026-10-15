@@ -83,12 +83,12 @@ fun ForgotPasswordScreen(
     onSendReset: () -> Unit,
     onBackToSignIn: () -> Unit
 ) {
-    var identifier by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var sent by remember { mutableStateOf(false) }
 
     fun doSendReset() {
-        error = AuthValidation.identifierError(identifier)
+        error = AuthValidation.emailError(email)
         if (error == null) {
             sent = true
             onSendReset()
@@ -172,20 +172,20 @@ fun ForgotPasswordScreen(
                     .padding(top = 6.dp, bottom = 8.dp)
             ) {
                 Text(
-                    text = "Email or Phone Number",
+                    text = "Email address",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = RidaInk
                 )
                 Spacer(Modifier.height(4.dp))
                 AuthTextField(
-                    value = identifier,
+                    value = email,
                     onValueChange = {
-                        identifier = it
+                        email = it
                         error = null
                         sent = false
                     },
-                    placeholder = "you@example.com or 07XXXXXXXX",
+                    placeholder = "you@example.com",
                     leadingIcon = {
                         RidaIcon(
                             icon = RidaIcons.Mail,
@@ -220,7 +220,7 @@ fun ForgotPasswordScreen(
                             }
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                text = "Check ${identifier.trim()} for the reset link. It expires in 30 minutes.",
+                                text = "Check ${email.trim()} for the reset link. It expires in 30 minutes.",
                                 fontSize = 12.5.sp,
                                 color = Color(0xFF047857),
                                 lineHeight = 17.sp
@@ -278,7 +278,7 @@ private fun ForgotPasswordCopy(modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            text = "No worries. Enter your email or phone number and we'll send you a reset link.",
+            text = "No worries. Enter your email address and we'll send you a reset link.",
             fontSize = 13.5.sp,
             lineHeight = 19.sp,
             fontWeight = FontWeight.Normal,

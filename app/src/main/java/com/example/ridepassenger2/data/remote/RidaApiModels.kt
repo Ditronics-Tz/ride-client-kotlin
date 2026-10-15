@@ -9,7 +9,6 @@ import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = false)
 data class RegisterRequest(
-    val name: String,
     val email: String,
     val password: String,
     val role: String? = "passenger"
@@ -17,9 +16,7 @@ data class RegisterRequest(
 
 @JsonClass(generateAdapter = false)
 data class LoginRequest(
-    val identifier: String? = null,
-    val email: String? = null,
-    val phone: String? = null,
+    val email: String,
     val password: String
 )
 
@@ -44,15 +41,19 @@ data class RefreshRequest(
 @JsonClass(generateAdapter = false)
 data class UserDto(
     val id: String,
-    val name: String,
+    val name: String? = null,
     val email: String? = null,
     val phone: String? = null,
     val role: String? = null,
     val status: String? = null,
     @param:Json(name = "is_active") val isActive: Boolean? = true,
     @param:Json(name = "phone_verified_at") val phoneVerifiedAt: String? = null,
-    @param:Json(name = "suspended_until") val suspendedUntil: String? = null
-)
+    @param:Json(name = "suspended_until") val suspendedUntil: String? = null,
+    val profileCompleted: Boolean? = null,
+    @param:Json(name = "profile_completed") val profileCompletedSnake: Boolean? = null
+) {
+    fun isProfileComplete(): Boolean? = profileCompleted ?: profileCompletedSnake
+}
 
 @JsonClass(generateAdapter = false)
 data class SessionResponse(
@@ -64,6 +65,8 @@ data class SessionResponse(
     val onboardingRequired: List<String>? = emptyList(),
     val restricted: Boolean? = false,
     val message: String? = null,
+    val profileCompleted: Boolean? = null,
+    @param:Json(name = "profile_completed") val profileCompletedSnake: Boolean? = null,
     // snake_case aliases for compatibility
     val token: String? = null,
     @param:Json(name = "access_token") val accessTokenSnake: String? = null,
@@ -72,13 +75,18 @@ data class SessionResponse(
 ) {
     fun getEffectiveAccessToken(): String = accessToken ?: accessTokenSnake ?: token ?: ""
     fun getEffectiveRefreshToken(): String = refreshToken ?: refreshTokenSnake ?: ""
+    fun isProfileComplete(): Boolean? = profileCompleted ?: profileCompletedSnake ?: user.isProfileComplete()
 }
 
 @JsonClass(generateAdapter = false)
 data class MeResponse(
     val user: UserDto,
-    val onboardingRequired: List<String>? = emptyList()
-)
+    val onboardingRequired: List<String>? = emptyList(),
+    val profileCompleted: Boolean? = null,
+    @param:Json(name = "profile_completed") val profileCompletedSnake: Boolean? = null
+) {
+    fun isProfileComplete(): Boolean? = profileCompleted ?: profileCompletedSnake ?: user.isProfileComplete()
+}
 
 // ---------------------------------------------------------------------------
 // OTP & Phone Verification
