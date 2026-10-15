@@ -217,5 +217,5 @@ fun DeleteAccountScreen(step: Int, onNext: () -> Unit, onConfirm: () -> Unit, on
 @Preview(showBackground = true) @Composable fun PrevEmailSent() { RIDEPASSENGER2Theme { ChangeEmailScreen(EmailChangeState(step = EmailStep.SENT, resendInSec = 20), {}, {}, {}, {}, {}, {}, {}) } }
 @Preview(showBackground = true) @Composable fun PrevEmailExpired() { RIDEPASSENGER2Theme { ChangeEmailScreen(EmailChangeState(step = EmailStep.EXPIRED), {}, {}, {}, {}, {}, {}, {}) } }
 @Preview(showBackground = true) @Composable fun PrevVerifyRows() { RIDEPASSENGER2Theme { Column(Modifier.fillMaxSize().padding(16.dp)) { ProfileVerifyRows(VerifyState.VERIFIED, VerifyState.PENDING, {}, {}) } } }
-@Preview(showBackground = true) @Composable fun PrevSecurity() { RIDEPASSENGER2Theme { SecurityScreen("Jina123!", "Jina123", {}, {}, {}, {}, {}, {}) } }
+@Preview(showBackground = true) @Composable fun PrevSecurity() { RIDEPASSENGER2Theme { SecurityScreen("Jina123!", "Jina123", {}, {}, emptyList(), {}, {}, {}, {}) } }
 @Preview(showBackground = true) @Composable fun PrevDelete() { RIDEPASSENGER2Theme { DeleteAccountScreen(0, {}, {}, {}) } }
