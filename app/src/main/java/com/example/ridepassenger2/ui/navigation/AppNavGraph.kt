@@ -1,14 +1,25 @@
 package com.example.ridepassenger2.ui.navigation
 
+import android.app.Activity
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -58,6 +69,10 @@ object Routes {
 
 // Bottom bar is shown only on the three primary tabs
 private val BottomBarRoutes = setOf(Routes.HOME_MAP, Routes.RIDE_HISTORY, Routes.PROFILE)
+private val ThemeRoutes = setOf(
+    Routes.PAY_FLOW, Routes.PAY_HISTORY, Routes.PROFILE_FLOW,
+    Routes.SUPPORT_FLOW, Routes.FLOW_GALLERY
+)
 
 @Composable
 fun AppNavGraph(
@@ -66,9 +81,25 @@ fun AppNavGraph(
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+    val visibleRoute = currentRoute ?: startDestination
     val showBottomBar = currentRoute in BottomBarRoutes
     val context = LocalContext.current
     val ioScope = rememberCoroutineScope()
+    val view = LocalView.current
+    val usesThemeBackground = visibleRoute in ThemeRoutes
+    val themeIsLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
+    // These two destinations have dark headers; the shared bottom bar is white.
+    // Use the actual screen palette rather than the device's dark-mode setting.
+    SideEffect {
+        val window = (context as? Activity)?.window
+        if (window != null) {
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = if (usesThemeBackground) themeIsLight else
+                    visibleRoute != Routes.PROFILE && visibleRoute != Routes.RIDE_HISTORY
+                isAppearanceLightNavigationBars = !usesThemeBackground || themeIsLight
+            }
+        }
+    }
 
     fun logOut() {
         ioScope.launch {
@@ -103,6 +134,9 @@ fun AppNavGraph(
     }
 
     Scaffold(
+        // Screens inset their controls, allowing their backgrounds to reach the edges.
+        contentWindowInsets = if (usesThemeBackground) WindowInsets.safeDrawing else
+            WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
         bottomBar = {
             if (showBottomBar) {
                 RidaBottomBar(
@@ -124,11 +158,12 @@ fun AppNavGraph(
             }
         }
     ) { innerPadding ->
-        // NavHost must respect Scaffold innerPadding so content isn't behind the bar
+        // Reserve the bottom tab bar and consume its inset so screens don't add it twice.
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
         ) {
             NavHost(
                 navController = navController,

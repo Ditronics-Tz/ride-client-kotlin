@@ -22,6 +22,7 @@
         android:theme="@style/Theme.RIDEPASSENGER2">
         <activity
             android:name=".MainActivity"
+            android:theme="@style/Theme.Rida.Starting"
             android:exported="true"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
