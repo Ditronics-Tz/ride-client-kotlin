@@ -31,6 +31,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.theme.RidaMintDark
 
 /** Shared low-end friendly components. No heavy animation. 48dp touch targets. */
@@ -48,7 +50,7 @@ fun MapPlaceholder(modifier: Modifier = Modifier, label: String = "Ramani") {
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "🗺", fontSize = 28.sp)
+            RidaIcon(RidaIcons.Map, contentDescription = null, modifier = Modifier.size(32.dp), tint = RidaMintDark)
             Spacer(Modifier.height(4.dp))
             Text(text = label, fontSize = 12.sp, color = Color(0xFF687771))
         }
@@ -177,7 +179,7 @@ fun FlowRow(title: String, subtitle: String = "", onClick: () -> Unit, trailing:
             Text(text = title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             if (subtitle.isNotBlank()) Text(text = subtitle, fontSize = 12.sp, color = Color(0xFF687771))
         }
-        trailing?.invoke() ?: Text(text = "›", fontSize = 18.sp, color = Color(0xFF9AA6A1))
+        trailing?.invoke() ?: RidaIcon(RidaIcons.ChevronRight, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color(0xFF9AA6A1))
     }
 }
 
@@ -201,7 +203,7 @@ fun FlowScaffold(title: String, onBack: () -> Unit, content: @Composable () -> U
                     .clickable(onClick = onBack)
                     .semantics { contentDescription = "Rudi nyuma" },
                 contentAlignment = Alignment.Center
-            ) { Text(text = "←", fontSize = 20.sp) }
+            ) { RidaIcon(RidaIcons.Back, contentDescription = null, modifier = Modifier.size(24.dp)) }
             Text(text = title, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
         content()

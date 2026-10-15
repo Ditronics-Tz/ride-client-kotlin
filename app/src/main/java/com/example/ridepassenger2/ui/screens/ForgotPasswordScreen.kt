@@ -30,12 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -67,6 +62,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ridepassenger2.R
 import com.example.ridepassenger2.data.local.AuthValidation
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 
@@ -127,8 +124,8 @@ fun ForgotPasswordScreen(
                         .clickable(onClick = onBack),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    RidaIcon(
+                        icon = RidaIcons.Back,
                         contentDescription = "Back",
                         tint = RidaInk,
                         modifier = Modifier.size(20.dp)
@@ -190,8 +187,8 @@ fun ForgotPasswordScreen(
                     },
                     placeholder = "you@example.com or 07XXXXXXXX",
                     leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.Email,
+                        RidaIcon(
+                            icon = RidaIcons.Mail,
                             contentDescription = null,
                             tint = RidaHint,
                             modifier = Modifier.size(20.dp)
@@ -217,12 +214,10 @@ fun ForgotPasswordScreen(
                             .padding(14.dp)
                     ) {
                         Column {
-                            Text(
-                                text = "✓ Reset link sent",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF065F46)
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                RidaIcon(RidaIcons.Check, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color(0xFF065F46))
+                                Text(text = "Reset link sent", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF065F46))
+                            }
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 text = "Check ${identifier.trim()} for the reset link. It expires in 30 minutes.",
@@ -396,8 +391,8 @@ private fun GradientPrimaryButton(
         }
         Text(text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
         Spacer(Modifier.width(8.dp))
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+        RidaIcon(
+            icon = RidaIcons.Forward,
             contentDescription = null,
             tint = Color.White,
             modifier = Modifier.size(18.dp)

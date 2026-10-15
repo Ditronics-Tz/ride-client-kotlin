@@ -21,11 +21,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -48,6 +43,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ridepassenger2.ui.components.HomeIndicator
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 
@@ -98,8 +95,8 @@ fun AddAddressScreen(
                         .clickable(onClick = onBack),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    RidaIcon(
+                        icon = RidaIcons.Back,
                         contentDescription = "Back",
                         tint = InkDark,
                         modifier = Modifier.size(22.dp)
@@ -144,8 +141,8 @@ fun AddAddressScreen(
                         )
                     },
                     leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.Search,
+                        RidaIcon(
+                            icon = RidaIcons.Search,
                             contentDescription = "Search",
                             tint = TextMuted,
                             modifier = Modifier.size(20.dp)
@@ -249,8 +246,8 @@ fun AddAddressScreen(
                             .background(LightMint),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.LocationOn,
+                        RidaIcon(
+                            icon = RidaIcons.SavedPlace,
                             contentDescription = "Pin",
                             tint = RidaGreen,
                             modifier = Modifier.size(28.dp)

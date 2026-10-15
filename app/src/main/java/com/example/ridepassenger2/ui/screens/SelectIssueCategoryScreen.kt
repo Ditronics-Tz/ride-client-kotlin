@@ -6,32 +6,25 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.CreditCard
-import androidx.compose.material.icons.outlined.DirectionsCar
-import androidx.compose.material.icons.outlined.LocalOffer
-import androidx.compose.material.icons.outlined.PersonOutline
-import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.theme.RidaLightTheme
 
 data class IssueCategoryItem(
     val title: String,
     val subtitle: String,
-    val icon: ImageVector,
+    val icon: Int,
 )
 
 @Composable
@@ -41,11 +34,11 @@ fun SelectIssueCategoryScreen(
     onCategorySelect: (IssueCategoryItem) -> Unit = {},
 ) {
     val categories = listOf(
-        IssueCategoryItem("Rides", "Bookings, drivers and trips", Icons.Outlined.DirectionsCar),
-        IssueCategoryItem("Payments", "Charges and payment methods", Icons.Outlined.CreditCard),
-        IssueCategoryItem("Account", "Profile, login and data", Icons.Outlined.PersonOutline),
-        IssueCategoryItem("Safety", "Report a safety concern", Icons.Outlined.Shield),
-        IssueCategoryItem("Promotions", "Offers and promo codes", Icons.Outlined.LocalOffer),
+        IssueCategoryItem("Rides", "Bookings, drivers and trips", RidaIcons.Rides),
+        IssueCategoryItem("Payments", "Charges and payment methods", RidaIcons.Payment),
+        IssueCategoryItem("Account", "Profile, login and data", RidaIcons.Account),
+        IssueCategoryItem("Safety", "Report a safety concern", RidaIcons.Safety),
+        IssueCategoryItem("Promotions", "Offers and promo codes", RidaIcons.Promotions),
     )
 
     Column(
@@ -66,8 +59,8 @@ fun SelectIssueCategoryScreen(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                RidaIcon(
+                    icon = RidaIcons.Back,
                     contentDescription = "Back",
                     tint = HelpTitleText
                 )
@@ -145,8 +138,8 @@ fun SelectIssueCategoryScreen(
                                 .background(HelpGreen.copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = category.icon,
+                            RidaIcon(
+                                icon = category.icon,
                                 contentDescription = null,
                                 tint = HelpGreen,
                                 modifier = Modifier.size(24.dp)
@@ -170,8 +163,8 @@ fun SelectIssueCategoryScreen(
                             )
                         }
 
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        RidaIcon(
+                            icon = RidaIcons.ChevronRight,
                             contentDescription = null,
                             tint = HelpMutedText,
                             modifier = Modifier.size(20.dp)

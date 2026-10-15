@@ -1,5 +1,6 @@
 package com.example.ridepassenger2.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,12 +15,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ridepassenger2.R
 import com.example.ridepassenger2.ui.theme.*
 
 // --------------------------------------------------------------------
@@ -113,7 +115,7 @@ fun RidaPrimaryDarkButton(
     ) {
         Text(text = text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         Spacer(modifier = Modifier.width(8.dp))
-        Text(text = "→", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        RidaIcon(RidaIcons.Forward, contentDescription = null, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -137,7 +139,7 @@ fun RidaMintButton(
     ) {
         Text(text = text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = RidaOnboardingBg)
         Spacer(modifier = Modifier.width(8.dp))
-        Text(text = "→", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = RidaOnboardingBg)
+        RidaIcon(RidaIcons.Forward, contentDescription = null, modifier = Modifier.size(20.dp), tint = RidaOnboardingBg)
     }
 }
 
@@ -171,19 +173,7 @@ fun RidaGoogleButton(
 
 @Composable
 private fun GoogleG() {
-    // Simple colored G approximation using Text with shadow? We'll use a custom Box with 4 color quadrants.
-    Box(
-        modifier = Modifier.size(18.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "G",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF4285F4),
-            textAlign = TextAlign.Center
-        )
-    }
+    Image(painter = painterResource(R.drawable.google_g), contentDescription = null, modifier = Modifier.size(18.dp))
 }
 
 // --------------------------------------------------------------------
@@ -240,39 +230,38 @@ fun RidaTextField(
 }
 
 // --------------------------------------------------------------------
-// Small helpers: Icons as text/compose (avoid adding icon dep)
+// Small field icons
 // --------------------------------------------------------------------
 @Composable
-fun MailIcon(tint: Color = RidaPlaceholder) {
-    Text(text = "✉", fontSize = 16.sp, color = tint)
+fun MailIcon(tint: Color = RidaMuted) {
+    RidaIcon(RidaIcons.Mail, contentDescription = null, modifier = Modifier.size(20.dp), tint = tint)
 }
 
 @Composable
-fun LockIcon(tint: Color = RidaPlaceholder) {
-    Text(text = "🔒", fontSize = 14.sp, color = tint)
+fun LockIcon(tint: Color = RidaMuted) {
+    RidaIcon(RidaIcons.Lock, contentDescription = null, modifier = Modifier.size(20.dp), tint = tint)
 }
 
 @Composable
-fun PhoneIcon(tint: Color = RidaPlaceholder) {
-    Text(text = "📞", fontSize = 14.sp, color = tint)
+fun PhoneIcon(tint: Color = RidaMuted) {
+    RidaIcon(RidaIcons.Phone, contentDescription = null, modifier = Modifier.size(20.dp), tint = tint)
 }
 
 @Composable
-fun PersonIcon(tint: Color = RidaPlaceholder) {
-    Text(text = "👤", fontSize = 14.sp, color = tint)
+fun PersonIcon(tint: Color = RidaMuted) {
+    RidaIcon(RidaIcons.Account, contentDescription = null, modifier = Modifier.size(20.dp), tint = tint)
 }
 
 @Composable
 fun EyeIcon(visible: Boolean, onClick: () -> Unit) {
-    Text(
-        text = if (visible) "🙈" else "👁",
-        fontSize = 16.sp,
-        color = RidaPlaceholder,
-        modifier = Modifier
-            .clip(CircleShape)
-            .clickable(onClick = onClick)
-            .padding(6.dp)
-    )
+    IconButton(onClick = onClick, modifier = Modifier.size(48.dp)) {
+        RidaIcon(
+            icon = if (visible) RidaIcons.HidePassword else RidaIcons.ShowPassword,
+            contentDescription = if (visible) "Hide password" else "Show password",
+            modifier = Modifier.size(20.dp),
+            tint = RidaMuted,
+        )
+    }
 }
 
 // Divider with OR

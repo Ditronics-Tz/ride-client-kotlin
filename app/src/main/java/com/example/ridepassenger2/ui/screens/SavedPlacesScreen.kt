@@ -20,17 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Map
-import androidx.compose.material.icons.outlined.WorkOutline
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -48,7 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -60,6 +49,8 @@ import com.example.ridepassenger2.data.remote.RidaApiClient
 import com.example.ridepassenger2.data.remote.SavedPlaceDto
 import androidx.compose.runtime.LaunchedEffect
 import com.example.ridepassenger2.ui.components.HomeIndicator
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 import kotlinx.coroutines.launch
@@ -176,8 +167,8 @@ fun SavedPlacesScreen(
                             .clickable(onClick = onBack),
                         contentAlignment = Alignment.CenterStart
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        RidaIcon(
+                            icon = RidaIcons.Back,
                             contentDescription = "Back",
                             tint = InkDark,
                             modifier = Modifier.size(22.dp)
@@ -217,7 +208,7 @@ fun SavedPlacesScreen(
 
                 // Home Card
                 SavedShortcutCard(
-                    icon = Icons.Outlined.Home,
+                    icon = RidaIcons.Home,
                     title = "Home",
                     subtitle = homeAddress ?: "Choose where you live",
                     onClick = {
@@ -234,7 +225,7 @@ fun SavedPlacesScreen(
 
                 // Work Card
                 SavedShortcutCard(
-                    icon = Icons.Outlined.WorkOutline,
+                    icon = RidaIcons.Work,
                     title = "Work",
                     subtitle = workAddress ?: "Save your workplace",
                     onClick = {
@@ -288,8 +279,8 @@ fun SavedPlacesScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Map,
+                    RidaIcon(
+                        icon = RidaIcons.Map,
                         contentDescription = null,
                         tint = RidaGreen,
                         modifier = Modifier.size(26.dp)
@@ -339,8 +330,8 @@ fun SavedPlacesScreen(
                         color = Color.White
                     )
                     Spacer(Modifier.width(8.dp))
-                    Icon(
-                        imageVector = Icons.Outlined.Add,
+                    RidaIcon(
+                        icon = RidaIcons.Add,
                         contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(22.dp)
@@ -445,7 +436,7 @@ fun SavedPlacesScreen(
 
 @Composable
 private fun SavedShortcutCard(
-    icon: ImageVector,
+    icon: Int,
     title: String,
     subtitle: String,
     onClick: () -> Unit,
@@ -469,8 +460,8 @@ private fun SavedShortcutCard(
                 .background(IconBg),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
+            RidaIcon(
+                icon = icon,
                 contentDescription = title,
                 tint = RidaGreen,
                 modifier = Modifier.size(24.dp)
@@ -491,8 +482,8 @@ private fun SavedShortcutCard(
                 maxLines = 1
             )
         }
-        Icon(
-            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+        RidaIcon(
+            icon = RidaIcons.ChevronRight,
             contentDescription = null,
             tint = Color(0xFF98A6A0),
             modifier = Modifier
@@ -527,8 +518,8 @@ private fun CustomPlaceCard(
                 .background(IconBg),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Outlined.LocationOn,
+            RidaIcon(
+                icon = RidaIcons.SavedPlace,
                 contentDescription = item.title,
                 tint = RidaGreen,
                 modifier = Modifier.size(24.dp)
@@ -555,8 +546,8 @@ private fun CustomPlaceCard(
                 .clickable(onClick = onEditClick)
                 .padding(4.dp)
         ) {
-            Icon(
-                imageVector = Icons.Outlined.Edit,
+            RidaIcon(
+                icon = RidaIcons.Edit,
                 contentDescription = "Edit place",
                 tint = Color(0xFF98A6A0),
                 modifier = Modifier.size(20.dp)

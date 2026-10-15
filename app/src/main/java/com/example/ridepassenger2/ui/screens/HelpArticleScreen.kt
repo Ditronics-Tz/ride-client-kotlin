@@ -20,11 +20,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.MenuBook
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -41,6 +36,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ridepassenger2.ui.components.HomeIndicator
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 
@@ -86,8 +83,8 @@ fun HelpArticleScreen(
                         .clickable(onClick = onBack),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    RidaIcon(
+                        icon = RidaIcons.Back,
                         contentDescription = "Back",
                         tint = InkDark,
                         modifier = Modifier.size(22.dp)
@@ -137,8 +134,8 @@ fun HelpArticleScreen(
                             .background(LightMint),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.MenuBook,
+                        RidaIcon(
+                            icon = RidaIcons.HelpArticles,
                             contentDescription = null,
                             tint = RidaGreen,
                             modifier = Modifier.size(22.dp)
@@ -225,8 +222,8 @@ fun HelpArticleScreen(
                             .background(Color.White),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Info,
+                        RidaIcon(
+                            icon = RidaIcons.Info,
                             contentDescription = "Info",
                             tint = RidaGreen,
                             modifier = Modifier.size(18.dp)

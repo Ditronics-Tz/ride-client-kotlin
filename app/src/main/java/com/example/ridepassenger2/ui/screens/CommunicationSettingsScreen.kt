@@ -18,13 +18,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.Chat
-import androidx.compose.material.icons.outlined.DirectionsCar
-import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -37,12 +31,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ridepassenger2.ui.components.HomeIndicator
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 
@@ -92,8 +87,8 @@ fun CommunicationSettingsScreen(
                         .clickable(onClick = onBack),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    RidaIcon(
+                        icon = RidaIcons.Back,
                         contentDescription = "Back",
                         tint = InkDark,
                         modifier = Modifier.size(22.dp)
@@ -136,7 +131,7 @@ fun CommunicationSettingsScreen(
                 Spacer(Modifier.height(10.dp))
 
                 CommunicationCardRow(
-                    icon = Icons.Outlined.DirectionsCar,
+                    icon = RidaIcons.Rides,
                     title = "Ride updates",
                     subtitle = "Driver assignment and arrival alerts",
                     checked = rideUpdates,
@@ -146,7 +141,7 @@ fun CommunicationSettingsScreen(
                 Spacer(Modifier.height(10.dp))
 
                 CommunicationCardRow(
-                    icon = Icons.AutoMirrored.Outlined.Chat,
+                    icon = RidaIcons.Chat,
                     title = "Trip messages",
                     subtitle = "Driver and support messages",
                     checked = tripMessages,
@@ -166,7 +161,7 @@ fun CommunicationSettingsScreen(
                 Spacer(Modifier.height(10.dp))
 
                 CommunicationCardRow(
-                    icon = Icons.Outlined.LocalOffer,
+                    icon = RidaIcons.Promotions,
                     title = "Offers and promotions",
                     subtitle = "Discounts and occasional updates",
                     checked = offersPromotions,
@@ -211,7 +206,7 @@ fun CommunicationSettingsScreen(
 
 @Composable
 private fun CommunicationCardRow(
-    icon: ImageVector,
+    icon: Int,
     title: String,
     subtitle: String,
     checked: Boolean,
@@ -234,8 +229,8 @@ private fun CommunicationCardRow(
                 .background(LightMint),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
+            RidaIcon(
+                icon = icon,
                 contentDescription = title,
                 tint = RidaGreen,
                 modifier = Modifier.size(24.dp)

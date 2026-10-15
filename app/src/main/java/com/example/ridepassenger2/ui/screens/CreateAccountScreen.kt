@@ -31,18 +31,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Phone
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -86,6 +77,8 @@ import com.example.ridepassenger2.data.local.SessionManager
 import com.example.ridepassenger2.data.remote.RegisterRequest
 import com.example.ridepassenger2.data.remote.RidaApiClient
 import com.example.ridepassenger2.data.repository.UserRepository
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 import kotlinx.coroutines.launch
@@ -234,8 +227,8 @@ fun CreateAccountScreen(
                     onValueChange = { fullName = it; nameError = null },
                     placeholder = "Your full name",
                     leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.Person,
+                        RidaIcon(
+                            icon = RidaIcons.Account,
                             contentDescription = null,
                             tint = RidaHint,
                             modifier = Modifier.size(20.dp)
@@ -262,8 +255,8 @@ fun CreateAccountScreen(
                     onValueChange = { phone = it; phoneError = null },
                     placeholder = "+255 7XX XXX XXX",
                     leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.Phone,
+                        RidaIcon(
+                            icon = RidaIcons.Phone,
                             contentDescription = null,
                             tint = RidaHint,
                             modifier = Modifier.size(20.dp)
@@ -290,8 +283,8 @@ fun CreateAccountScreen(
                     onValueChange = { email = it },
                     placeholder = "you@example.com",
                     leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.Email,
+                        RidaIcon(
+                            icon = RidaIcons.Mail,
                             contentDescription = null,
                             tint = RidaHint,
                             modifier = Modifier.size(20.dp)
@@ -316,8 +309,8 @@ fun CreateAccountScreen(
                     onValueChange = { password = it; pwError = null },
                     placeholder = "Create a password",
                     leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.Lock,
+                        RidaIcon(
+                            icon = RidaIcons.Lock,
                             contentDescription = null,
                             tint = RidaHint,
                             modifier = Modifier.size(20.dp)
@@ -328,8 +321,8 @@ fun CreateAccountScreen(
                             onClick = { passwordVisible = !passwordVisible },
                             modifier = Modifier.size(48.dp)
                         ) {
-                            Icon(
-                                imageVector = if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                            RidaIcon(
+                                icon = if (passwordVisible) RidaIcons.HidePassword else RidaIcons.ShowPassword,
                                 contentDescription = if (passwordVisible) "Hide password" else "Show password",
                                 tint = RidaSecondary,
                                 modifier = Modifier.size(20.dp)
@@ -641,8 +634,8 @@ private fun GradientPrimaryButton(
         }
         Text(text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
         Spacer(Modifier.width(8.dp))
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+        RidaIcon(
+            icon = RidaIcons.Forward,
             contentDescription = null,
             tint = Color.White,
             modifier = Modifier.size(18.dp)

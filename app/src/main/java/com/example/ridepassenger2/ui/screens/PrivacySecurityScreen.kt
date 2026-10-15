@@ -19,28 +19,20 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material.icons.outlined.VerifiedUser
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ridepassenger2.ui.components.HomeIndicator
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 
@@ -89,8 +81,8 @@ fun PrivacySecurityScreen(
                         .clickable(onClick = onBack),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    RidaIcon(
+                        icon = RidaIcons.Back,
                         contentDescription = "Back",
                         tint = InkDark,
                         modifier = Modifier.size(22.dp)
@@ -139,8 +131,8 @@ fun PrivacySecurityScreen(
                             .background(Color.White),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Shield,
+                        RidaIcon(
+                            icon = RidaIcons.Safety,
                             contentDescription = "Security",
                             tint = RidaGreen,
                             modifier = Modifier.size(22.dp)
@@ -175,7 +167,7 @@ fun PrivacySecurityScreen(
                 Spacer(Modifier.height(10.dp))
 
                 SecurityOptionRow(
-                    icon = Icons.Outlined.Lock,
+                    icon = RidaIcons.Lock,
                     title = "Password",
                     subtitle = "Update your account password",
                     onClick = onPassword
@@ -184,7 +176,7 @@ fun PrivacySecurityScreen(
                 Spacer(Modifier.height(10.dp))
 
                 SecurityOptionRow(
-                    icon = Icons.Outlined.VerifiedUser,
+                    icon = RidaIcons.Verified,
                     title = "Two-step verification",
                     subtitle = "Protect your sign-in",
                     onClick = onTwoStep
@@ -203,7 +195,7 @@ fun PrivacySecurityScreen(
                 Spacer(Modifier.height(10.dp))
 
                 SecurityOptionRow(
-                    icon = Icons.Outlined.LocationOn,
+                    icon = RidaIcons.SavedPlace,
                     title = "Location permissions",
                     subtitle = "Choose when location is shared",
                     onClick = onLocationPermissions
@@ -212,7 +204,7 @@ fun PrivacySecurityScreen(
                 Spacer(Modifier.height(10.dp))
 
                 SecurityOptionRow(
-                    icon = Icons.Outlined.Description,
+                    icon = RidaIcons.Document,
                     title = "Personal data",
                     subtitle = "View or request your information",
                     onClick = onPersonalData
@@ -236,8 +228,8 @@ fun PrivacySecurityScreen(
                         fontWeight = FontWeight.Bold,
                         color = DeleteRed
                     )
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                    RidaIcon(
+                        icon = RidaIcons.ChevronRight,
                         contentDescription = "Delete",
                         tint = DeleteRed,
                         modifier = Modifier.size(20.dp)
@@ -255,7 +247,7 @@ fun PrivacySecurityScreen(
 
 @Composable
 private fun SecurityOptionRow(
-    icon: ImageVector,
+    icon: Int,
     title: String,
     subtitle: String,
     onClick: () -> Unit
@@ -278,8 +270,8 @@ private fun SecurityOptionRow(
                 .background(LightMint),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
+            RidaIcon(
+                icon = icon,
                 contentDescription = title,
                 tint = RidaGreen,
                 modifier = Modifier.size(24.dp)
@@ -299,8 +291,8 @@ private fun SecurityOptionRow(
                 color = TextMuted
             )
         }
-        Icon(
-            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+        RidaIcon(
+            icon = RidaIcons.ChevronRight,
             contentDescription = null,
             tint = Color(0xFF98A6A0),
             modifier = Modifier.size(20.dp)

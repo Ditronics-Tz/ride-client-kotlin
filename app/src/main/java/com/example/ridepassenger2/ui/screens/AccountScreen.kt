@@ -7,22 +7,19 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.theme.RidaLightTheme
 
@@ -56,8 +53,8 @@ fun AccountScreen(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                RidaIcon(
+                    icon = RidaIcons.Back,
                     contentDescription = "Back",
                     tint = HelpTitleText
                 )
@@ -108,8 +105,8 @@ fun AccountScreen(
                                 .background(HelpGreen.copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Outlined.PersonOutline,
+                            RidaIcon(
+                                icon = RidaIcons.Account,
                                 contentDescription = null,
                                 tint = HelpGreen,
                                 modifier = Modifier.size(28.dp)
@@ -131,12 +128,10 @@ fun AccountScreen(
                                 fontSize = 13.5.sp,
                                 color = HelpMutedText
                             )
-                            Text(
-                                text = "★ $passengerRating passenger rating",
-                                fontSize = 13.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = HelpGreen
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                RidaIcon(RidaIcons.Star, contentDescription = null, modifier = Modifier.size(16.dp), tint = HelpGreen)
+                                Text(text = "$passengerRating passenger rating", fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold, color = HelpGreen)
+                            }
                         }
                     }
                 }
@@ -156,8 +151,8 @@ fun AccountScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Shield,
+                        RidaIcon(
+                            icon = RidaIcons.Safety,
                             contentDescription = null,
                             tint = HelpGreen,
                             modifier = Modifier.size(28.dp)
@@ -181,8 +176,8 @@ fun AccountScreen(
                             )
                         }
 
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        RidaIcon(
+                            icon = RidaIcons.ChevronRight,
                             contentDescription = null,
                             tint = HelpGreen,
                             modifier = Modifier.size(20.dp)
@@ -214,7 +209,7 @@ fun AccountScreen(
                     Column {
                         // Profile
                         AccountOptionRow(
-                            icon = Icons.Outlined.PersonOutline,
+                            icon = RidaIcons.Account,
                             title = "Profile",
                             onClick = onProfileSelect
                         )
@@ -226,7 +221,7 @@ fun AccountScreen(
 
                         // Payment
                         AccountOptionRow(
-                            icon = Icons.Outlined.CreditCard,
+                            icon = RidaIcons.Payment,
                             title = "Payment",
                             onClick = onPaymentSelect
                         )
@@ -238,7 +233,7 @@ fun AccountScreen(
 
                         // Support
                         AccountOptionRow(
-                            icon = Icons.Outlined.HelpOutline,
+                            icon = RidaIcons.Help,
                             title = "Support",
                             onClick = onSupportSelect
                         )
@@ -250,7 +245,7 @@ fun AccountScreen(
 
                         // Safety
                         AccountOptionRow(
-                            icon = Icons.Outlined.Shield,
+                            icon = RidaIcons.Safety,
                             title = "Safety",
                             onClick = onSafetySelect
                         )
@@ -262,7 +257,7 @@ fun AccountScreen(
 
                         // Saved places
                         AccountOptionRow(
-                            icon = Icons.Outlined.Place,
+                            icon = RidaIcons.SavedPlace,
                             title = "Saved places",
                             onClick = onSavedPlacesSelect
                         )
@@ -274,7 +269,7 @@ fun AccountScreen(
 
                         // Settings
                         AccountOptionRow(
-                            icon = Icons.Outlined.Settings,
+                            icon = RidaIcons.Settings,
                             title = "Settings",
                             onClick = onSettingsSelect
                         )
@@ -287,7 +282,7 @@ fun AccountScreen(
 
 @Composable
 private fun AccountOptionRow(
-    icon: ImageVector,
+    icon: Int,
     title: String,
     onClick: () -> Unit
 ) {
@@ -299,8 +294,8 @@ private fun AccountOptionRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Icon(
-            imageVector = icon,
+        RidaIcon(
+            icon = icon,
             contentDescription = null,
             tint = HelpGreen,
             modifier = Modifier.size(24.dp)
@@ -318,8 +313,8 @@ private fun AccountOptionRow(
 
         Spacer(Modifier.width(12.dp))
 
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+        RidaIcon(
+            icon = RidaIcons.ChevronRight,
             contentDescription = null,
             tint = HelpMutedText,
             modifier = Modifier.size(20.dp)

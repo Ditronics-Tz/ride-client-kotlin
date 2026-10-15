@@ -23,16 +23,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.outlined.Chat
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Route
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
@@ -67,6 +58,8 @@ import com.example.ridepassenger2.data.repository.UserRepository
 import com.example.ridepassenger2.data.remote.RidaApiClient
 import androidx.compose.runtime.LaunchedEffect
 import com.example.ridepassenger2.ui.components.HomeIndicator
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 import kotlinx.coroutines.launch
@@ -100,8 +93,8 @@ private fun AliveTopBar(title: String, onBack: () -> Unit) {
                 .clickable(onClick = onBack),
             contentAlignment = Alignment.CenterStart
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            RidaIcon(
+                icon = RidaIcons.Back,
                 contentDescription = "Back",
                 tint = XTitle,
                 modifier = Modifier.size(22.dp)
@@ -133,14 +126,6 @@ private fun AliveScaffold(title: String, onBack: () -> Unit, content: @Composabl
             HomeIndicator(color = Color.Black.copy(alpha = 0.6f))
         }
     }
-}
-
-private fun paymentIcon(method: String): String = when (method) {
-    "M-Pesa" -> "📱"
-    "Tigo Pesa" -> "📲"
-    "HaloPesa" -> "💳"
-    "Card" -> "💼"
-    else -> "💵"
 }
 
 // ------------------------------------------------------------------
@@ -190,7 +175,7 @@ fun PaymentMethodsScreen(
                     .background(XPill),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "💵", fontSize = 20.sp)
+                RidaIcon(RidaIcons.Cash, contentDescription = null, modifier = Modifier.size(24.dp), tint = XMint)
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = "Cash", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = XTitle)
@@ -204,7 +189,7 @@ fun PaymentMethodsScreen(
                     .background(XMint),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "✓", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                RidaIcon(RidaIcons.Check, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
             }
         }
 
@@ -242,14 +227,14 @@ fun PaymentMethodsScreen(
                     .background(XPill),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "📱", fontSize = 20.sp)
+                RidaIcon(RidaIcons.MobileMoney, contentDescription = null, modifier = Modifier.size(24.dp), tint = XMint)
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = "Mobile money", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = XTitle)
                 Spacer(Modifier.height(2.dp))
                 Text(text = "M-Pesa, Airtel Money, Mixx by Yas", fontSize = 12.5.sp, color = XMuted)
             }
-            Text(text = "›", fontSize = 22.sp, color = Color(0xFF98A6A0))
+            RidaIcon(RidaIcons.ChevronRight, contentDescription = null, modifier = Modifier.size(24.dp), tint = Color(0xFF98A6A0))
         }
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -276,14 +261,14 @@ fun PaymentMethodsScreen(
                     .background(XPill),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "💳", fontSize = 20.sp)
+                RidaIcon(RidaIcons.Payment, contentDescription = null, modifier = Modifier.size(24.dp), tint = XMint)
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = "Debit or credit card", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = XTitle)
                 Spacer(Modifier.height(2.dp))
                 Text(text = "Visa and Mastercard", fontSize = 12.5.sp, color = XMuted)
             }
-            Text(text = "›", fontSize = 22.sp, color = Color(0xFF98A6A0))
+            RidaIcon(RidaIcons.ChevronRight, contentDescription = null, modifier = Modifier.size(24.dp), tint = Color(0xFF98A6A0))
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -305,7 +290,7 @@ fun PaymentMethodsScreen(
                     .background(Color.White),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "✓", color = XMint, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                RidaIcon(RidaIcons.Check, contentDescription = null, modifier = Modifier.size(16.dp), tint = XMint)
             }
             Column {
                 Text(
@@ -556,7 +541,7 @@ fun ScheduleRideScreen(onBack: () -> Unit = {}, prefillDestination: String = "")
                                 .background(XPill),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("🚗", fontSize = 18.sp)
+                            RidaIcon(RidaIcons.Rides, contentDescription = null, modifier = Modifier.size(22.dp), tint = XMint)
                         }
                         Column {
                             Text(text = opt, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = XTitle)
@@ -598,8 +583,8 @@ fun ScheduleRideScreen(onBack: () -> Unit = {}, prefillDestination: String = "")
         ) {
             Text(text = "Confirm Schedule • $price", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Spacer(Modifier.width(8.dp))
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+            RidaIcon(
+                icon = RidaIcons.Forward,
                 contentDescription = null,
                 tint = Color.White,
                 modifier = Modifier.size(18.dp)
@@ -778,7 +763,7 @@ fun SafetyScreen(onBack: () -> Unit = {}) {
                     .background(Color(0xFFDC2626)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "🛡", fontSize = 24.sp)
+                RidaIcon(RidaIcons.Safety, contentDescription = null, modifier = Modifier.size(28.dp), tint = Color.White)
             }
             Spacer(modifier = Modifier.height(10.dp))
             Text(text = "Emergency SOS (112)", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF991B1B))
@@ -819,7 +804,7 @@ fun SafetyScreen(onBack: () -> Unit = {}) {
         Spacer(modifier = Modifier.height(10.dp))
 
         SafetyToolCard(
-            icon = "📤",
+            icon = RidaIcons.Share,
             title = "Share Live Location",
             subtitle = "Send real-time ride tracking to family or friends",
             onClick = {
@@ -834,7 +819,7 @@ fun SafetyScreen(onBack: () -> Unit = {}) {
         )
 
         SafetyToolCard(
-            icon = "📞",
+            icon = RidaIcons.Phone,
             title = "24/7 Support Hotline",
             subtitle = "Call 0800 750 000 for instant app support",
             onClick = {
@@ -844,7 +829,7 @@ fun SafetyScreen(onBack: () -> Unit = {}) {
         )
 
         SafetyToolCard(
-            icon = "👥",
+            icon = RidaIcons.Users,
             title = "Trusted Emergency Contacts",
             subtitle = "Speed-dial your primary emergency contact",
             onClick = {
@@ -891,7 +876,7 @@ fun SafetyScreen(onBack: () -> Unit = {}) {
                             .background(XPill),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "✓", color = XMint, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        RidaIcon(RidaIcons.Check, contentDescription = null, modifier = Modifier.size(14.dp), tint = XMint)
                     }
                     Text(text = tip, fontSize = 13.sp, color = XBody, lineHeight = 18.sp)
                 }
@@ -901,7 +886,7 @@ fun SafetyScreen(onBack: () -> Unit = {}) {
 }
 
 @Composable
-private fun SafetyToolCard(icon: String, title: String, subtitle: String, onClick: () -> Unit) {
+private fun SafetyToolCard(icon: Int, title: String, subtitle: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -920,14 +905,14 @@ private fun SafetyToolCard(icon: String, title: String, subtitle: String, onClic
                 .background(XPill),
             contentAlignment = Alignment.Center
         ) {
-            Text(text = icon, fontSize = 20.sp)
+            RidaIcon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = XMint)
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(text = title, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = XTitle)
             Spacer(Modifier.height(2.dp))
             Text(text = subtitle, fontSize = 12.5.sp, color = XMuted)
         }
-        Text(text = "›", fontSize = 22.sp, color = Color(0xFF98A6A0))
+        RidaIcon(RidaIcons.ChevronRight, contentDescription = null, modifier = Modifier.size(24.dp), tint = Color(0xFF98A6A0))
     }
     Spacer(modifier = Modifier.height(10.dp))
 }
@@ -1038,8 +1023,8 @@ fun RidePreferencesScreen(
                     .background(XPill),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.Chat,
+                RidaIcon(
+                    icon = RidaIcons.Chat,
                     contentDescription = null,
                     tint = XMint,
                     modifier = Modifier.size(24.dp)
@@ -1077,8 +1062,8 @@ fun RidePreferencesScreen(
                     .background(XPill),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Schedule,
+                RidaIcon(
+                    icon = RidaIcons.Pending,
                     contentDescription = null,
                     tint = XMint,
                     modifier = Modifier.size(24.dp)
@@ -1126,8 +1111,8 @@ fun RidePreferencesScreen(
                     .background(XPill),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Route,
+                RidaIcon(
+                    icon = RidaIcons.Route,
                     contentDescription = null,
                     tint = XMint,
                     modifier = Modifier.size(24.dp)
@@ -1165,8 +1150,8 @@ fun RidePreferencesScreen(
                     .background(XPill),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.LocationOn,
+                RidaIcon(
+                    icon = RidaIcons.SavedPlace,
                     contentDescription = null,
                     tint = XMint,
                     modifier = Modifier.size(24.dp)
@@ -1196,8 +1181,8 @@ fun RidePreferencesScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(
-                imageVector = Icons.Outlined.FavoriteBorder,
+            RidaIcon(
+                icon = RidaIcons.Heart,
                 contentDescription = "Preferences",
                 tint = XMint,
                 modifier = Modifier.size(22.dp)
@@ -1296,15 +1281,15 @@ fun ContactUsScreen(onBack: () -> Unit = {}) {
     AliveScaffold(title = "Contact Us", onBack = onBack) {
         Text(text = "We're here 24/7 in Dar es Salaam.", fontSize = 13.5.sp, color = XMuted)
         Spacer(modifier = Modifier.height(16.dp))
-        SafetyToolCard("📞", "Call support", "0800 750 000 • free") {
+        SafetyToolCard(RidaIcons.Phone, "Call support", "0800 750 000 • free") {
             try { context.startActivity(Intent(Intent.ACTION_DIAL, "tel:0800750000".toUri())) } catch (_: Exception) { }
         }
-        SafetyToolCard("✉", "Email us", "support@rida.co.tz") {
+        SafetyToolCard(RidaIcons.Mail, "Email us", "support@rida.co.tz") {
             try {
                 context.startActivity(Intent(Intent.ACTION_SENDTO, "mailto:support@rida.co.tz".toUri()))
             } catch (_: Exception) { Toast.makeText(context, "support@rida.co.tz", Toast.LENGTH_LONG).show() }
         }
-        SafetyToolCard("💬", "WhatsApp", "+255 700 000 000") {
+        SafetyToolCard(RidaIcons.Chat, "WhatsApp", "+255 700 000 000") {
             Toast.makeText(context, "WhatsApp: +255 700 000 000", Toast.LENGTH_LONG).show()
         }
     }

@@ -21,19 +21,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.Chat
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.AttachFile
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.FormatListBulleted
-import androidx.compose.material.icons.outlined.PersonOutline
-import androidx.compose.material.icons.outlined.Route
-import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -47,13 +34,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ridepassenger2.ui.components.HomeIndicator
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 
@@ -82,8 +70,8 @@ private fun SupportTopBar(onBack: () -> Unit) {
                 .clickable(onClick = onBack),
             contentAlignment = Alignment.CenterStart
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            RidaIcon(
+                icon = RidaIcons.Back,
                 contentDescription = "Back",
                 tint = InkDark,
                 modifier = Modifier.size(22.dp)
@@ -157,8 +145,8 @@ fun SafetyCenterScreen(
                             .background(RidaGreen),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Shield,
+                        RidaIcon(
+                            icon = RidaIcons.Safety,
                             contentDescription = "Shield",
                             tint = Color.White,
                             modifier = Modifier.size(24.dp)
@@ -200,8 +188,8 @@ fun SafetyCenterScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = DarkForestGreen
                             )
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                            RidaIcon(
+                                icon = RidaIcons.ChevronRight,
                                 contentDescription = null,
                                 tint = DarkForestGreen,
                                 modifier = Modifier.size(18.dp)
@@ -223,7 +211,7 @@ fun SafetyCenterScreen(
                 Spacer(Modifier.height(12.dp))
 
                 SafetyFeatureCard(
-                    icon = Icons.Outlined.PersonOutline,
+                    icon = RidaIcons.Account,
                     title = "Trusted contacts",
                     subtitle = "Share trip details with people you trust",
                     onClick = onTrustedContacts
@@ -232,7 +220,7 @@ fun SafetyCenterScreen(
                 Spacer(Modifier.height(10.dp))
 
                 SafetyFeatureCard(
-                    icon = Icons.Outlined.Route,
+                    icon = RidaIcons.Route,
                     title = "Share my trip",
                     subtitle = "Send your live trip link securely",
                     onClick = onShareTrip
@@ -241,7 +229,7 @@ fun SafetyCenterScreen(
                 Spacer(Modifier.height(10.dp))
 
                 SafetyFeatureCard(
-                    icon = Icons.Outlined.Shield,
+                    icon = RidaIcons.Safety,
                     title = "Ride safety tips",
                     subtitle = "Learn how to stay safe on the road",
                     onClick = onSafetyTips
@@ -259,8 +247,8 @@ fun SafetyCenterScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Check,
+                    RidaIcon(
+                        icon = RidaIcons.Check,
                         contentDescription = "Check",
                         tint = RidaGreen,
                         modifier = Modifier.size(22.dp)
@@ -284,7 +272,7 @@ fun SafetyCenterScreen(
 
 @Composable
 private fun SafetyFeatureCard(
-    icon: ImageVector,
+    icon: Int,
     title: String,
     subtitle: String,
     onClick: () -> Unit
@@ -307,8 +295,8 @@ private fun SafetyFeatureCard(
                 .background(LightMint),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
+            RidaIcon(
+                icon = icon,
                 contentDescription = title,
                 tint = RidaGreen,
                 modifier = Modifier.size(24.dp)
@@ -328,8 +316,8 @@ private fun SafetyFeatureCard(
                 color = TextMuted
             )
         }
-        Icon(
-            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+        RidaIcon(
+            icon = RidaIcons.ChevronRight,
             contentDescription = null,
             tint = Color(0xFF98A6A0),
             modifier = Modifier.size(20.dp)
@@ -499,8 +487,8 @@ private fun SupportCaseCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.Chat,
+                RidaIcon(
+                    icon = RidaIcons.Chat,
                     contentDescription = null,
                     tint = RidaGreen,
                     modifier = Modifier.size(20.dp)
@@ -549,8 +537,8 @@ private fun SupportCaseCard(
                     color = TextMuted
                 )
             }
-            Icon(
-                imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+            RidaIcon(
+                icon = RidaIcons.ChevronRight,
                 contentDescription = null,
                 tint = Color(0xFF98A6A0),
                 modifier = Modifier.size(20.dp)
@@ -629,8 +617,8 @@ fun ReportIssueScreen(
                         )
                     },
                     leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.FormatListBulleted,
+                        RidaIcon(
+                            icon = RidaIcons.List,
                             contentDescription = "Category",
                             tint = TextMuted,
                             modifier = Modifier.size(20.dp)
@@ -747,8 +735,8 @@ fun ReportIssueScreen(
                             .background(LightMint),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.AttachFile,
+                        RidaIcon(
+                            icon = RidaIcons.Attachment,
                             contentDescription = "Attach",
                             tint = RidaGreen,
                             modifier = Modifier.size(22.dp)
@@ -770,8 +758,8 @@ fun ReportIssueScreen(
                         )
                     }
 
-                    Icon(
-                        imageVector = Icons.Outlined.Add,
+                    RidaIcon(
+                        icon = RidaIcons.Add,
                         contentDescription = "Add",
                         tint = Color(0xFF6B7280),
                         modifier = Modifier.size(22.dp)
@@ -941,7 +929,7 @@ fun CaseDetailsScreen(
                         .padding(18.dp)
                 ) {
                     TimelineItem(
-                        icon = Icons.Outlined.Check,
+                        icon = RidaIcons.Check,
                         isGreenIcon = true,
                         title = "Request submitted",
                         subtitle = "10 Oct · 09:41",
@@ -949,7 +937,7 @@ fun CaseDetailsScreen(
                     )
 
                     TimelineItem(
-                        icon = Icons.Outlined.PersonOutline,
+                        icon = RidaIcons.Account,
                         isGreenIcon = true,
                         title = "Assigned to support",
                         subtitle = "10 Oct · 09:45",
@@ -957,7 +945,7 @@ fun CaseDetailsScreen(
                     )
 
                     TimelineItem(
-                        icon = Icons.Outlined.Schedule,
+                        icon = RidaIcons.Pending,
                         isGreenIcon = false,
                         title = "Awaiting an update",
                         subtitle = "We will notify you when there is a reply",
@@ -977,8 +965,8 @@ fun CaseDetailsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.Chat,
+                    RidaIcon(
+                        icon = RidaIcons.Chat,
                         contentDescription = "Chat",
                         tint = RidaGreen,
                         modifier = Modifier.size(22.dp)
@@ -1022,7 +1010,7 @@ fun CaseDetailsScreen(
 
 @Composable
 private fun TimelineItem(
-    icon: ImageVector,
+    icon: Int,
     isGreenIcon: Boolean,
     title: String,
     subtitle: String,
@@ -1040,8 +1028,8 @@ private fun TimelineItem(
                     .background(if (isGreenIcon) LightMint else Color(0xFFF3F4F6)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = icon,
+                RidaIcon(
+                    icon = icon,
                     contentDescription = null,
                     tint = if (isGreenIcon) RidaGreen else Color(0xFF6B7280),
                     modifier = Modifier.size(18.dp)

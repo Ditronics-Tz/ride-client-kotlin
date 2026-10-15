@@ -6,12 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
-import androidx.compose.material.icons.outlined.DirectionsCar
-import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -23,6 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.theme.RidaLightTheme
 
 @Composable
@@ -50,8 +46,8 @@ fun HelpCenterScreen(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                RidaIcon(
+                    icon = RidaIcons.Back,
                     contentDescription = "Back",
                     tint = HelpTitleText
                 )
@@ -108,8 +104,8 @@ fun HelpCenterScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.HelpOutline,
+                        RidaIcon(
+                            icon = RidaIcons.Help,
                             contentDescription = null,
                             tint = HelpGreen,
                             modifier = Modifier.size(32.dp)
@@ -165,8 +161,8 @@ fun HelpCenterScreen(
                                 .background(HelpGreen.copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Outlined.DirectionsCar,
+                            RidaIcon(
+                                icon = RidaIcons.Rides,
                                 contentDescription = null,
                                 tint = HelpGreen,
                                 modifier = Modifier.size(24.dp)
@@ -190,8 +186,8 @@ fun HelpCenterScreen(
                             )
                         }
 
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        RidaIcon(
+                            icon = RidaIcons.ChevronRight,
                             contentDescription = null,
                             tint = HelpMutedText,
                             modifier = Modifier.size(20.dp)
@@ -222,8 +218,8 @@ fun HelpCenterScreen(
                                 .background(HelpGreen.copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Outlined.ChatBubbleOutline,
+                            RidaIcon(
+                                icon = RidaIcons.Chat,
                                 contentDescription = null,
                                 tint = HelpGreen,
                                 modifier = Modifier.size(24.dp)
@@ -247,8 +243,8 @@ fun HelpCenterScreen(
                             )
                         }
 
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        RidaIcon(
+                            icon = RidaIcons.ChevronRight,
                             contentDescription = null,
                             tint = HelpMutedText,
                             modifier = Modifier.size(20.dp)

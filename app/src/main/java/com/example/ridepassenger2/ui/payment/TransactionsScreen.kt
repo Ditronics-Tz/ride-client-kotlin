@@ -19,12 +19,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.CreditCard
-import androidx.compose.material.icons.outlined.DirectionsCar
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -36,12 +30,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ridepassenger2.ui.components.HomeIndicator
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 
@@ -87,8 +82,8 @@ fun TransactionsScreen(
                         .clickable(onClick = onBack),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    RidaIcon(
+                        icon = RidaIcons.Back,
                         contentDescription = "Back",
                         tint = InkDark,
                         modifier = Modifier.size(22.dp)
@@ -139,8 +134,8 @@ fun TransactionsScreen(
                             fontSize = 13.5.sp,
                             color = Color.White.copy(alpha = 0.85f)
                         )
-                        Icon(
-                            imageVector = Icons.Outlined.CreditCard,
+                        RidaIcon(
+                            icon = RidaIcons.Payment,
                             contentDescription = null,
                             tint = Color.White,
                             modifier = Modifier.size(24.dp)
@@ -194,7 +189,7 @@ fun TransactionsScreen(
                 Spacer(Modifier.height(12.dp))
 
                 TransactionRow(
-                    icon = Icons.Outlined.DirectionsCar,
+                    icon = RidaIcons.Rides,
                     title = "Ride payment",
                     date = "12 Oct · 16:10",
                     amount = "– TZS 12,000",
@@ -204,7 +199,7 @@ fun TransactionsScreen(
                 Spacer(Modifier.height(10.dp))
 
                 TransactionRow(
-                    icon = Icons.Outlined.DirectionsCar,
+                    icon = RidaIcons.Rides,
                     title = "Ride payment",
                     date = "10 Oct · 08:34",
                     amount = "– TZS 8,500",
@@ -214,7 +209,7 @@ fun TransactionsScreen(
                 Spacer(Modifier.height(10.dp))
 
                 TransactionRow(
-                    icon = Icons.Outlined.Check,
+                    icon = RidaIcons.Check,
                     title = "Refund processed",
                     date = "8 Oct · 13:24",
                     amount = "+ TZS 3,500",
@@ -224,7 +219,7 @@ fun TransactionsScreen(
                 Spacer(Modifier.height(10.dp))
 
                 TransactionRow(
-                    icon = Icons.Outlined.DirectionsCar,
+                    icon = RidaIcons.Rides,
                     title = "Ride payment",
                     date = "6 Oct · 18:21",
                     amount = "– TZS 9,000",
@@ -242,7 +237,7 @@ fun TransactionsScreen(
 
 @Composable
 private fun TransactionRow(
-    icon: ImageVector,
+    icon: Int,
     title: String,
     date: String,
     amount: String,
@@ -265,8 +260,8 @@ private fun TransactionRow(
                 .background(LightMint),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
+            RidaIcon(
+                icon = icon,
                 contentDescription = title,
                 tint = RidaGreen,
                 modifier = Modifier.size(24.dp)

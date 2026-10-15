@@ -15,10 +15,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.tooling.preview.Preview
 import com.example.ridepassenger2.data.repository.RideRepository
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 
 // Dark palette — locked to the home screen
@@ -154,7 +156,7 @@ private fun RideHistoryScreenInternal(
                             .padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(text = "🚗", fontSize = 28.sp)
+                        RidaIcon(RidaIcons.Rides, contentDescription = null, modifier = Modifier.size(32.dp), tint = ActMint)
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(text = "No ${filter.lowercase()} rides yet", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = ActTitle)
                         Text(text = "Request a ride from Home and it lands here.", fontSize = 12.sp, color = ActMuted)
@@ -181,7 +183,7 @@ private fun RideHistoryScreenInternal(
                             .border(1.dp, ActBorder, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "🚗", fontSize = 15.sp)
+                        RidaIcon(RidaIcons.Rides, contentDescription = null, modifier = Modifier.size(20.dp), tint = ActMint)
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -201,7 +203,7 @@ private fun RideHistoryScreenInternal(
                         Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                                 Box(modifier = Modifier.size(22.dp).clip(CircleShape).background(ActPill), contentAlignment = Alignment.Center) {
-                                    Text(text = "👤", fontSize = 10.sp)
+                                    RidaIcon(RidaIcons.Account, contentDescription = null, modifier = Modifier.size(14.dp), tint = ActMuted)
                                 }
                                 Text(text = item.people, fontSize = 11.sp, color = ActMuted)
                             }

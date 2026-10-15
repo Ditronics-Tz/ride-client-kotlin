@@ -1,14 +1,5 @@
 package com.example.ridepassenger2.ui.components
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -57,9 +48,9 @@ fun RidaBottomBar(
             onClick = onHome,
             label = { Text("Home") },
             icon = {
-                Icon(
-                    imageVector = if (norm == "Home") Icons.Filled.Home else Icons.Outlined.Home,
-                    contentDescription = "Home"
+                RidaIcon(
+                    icon = RidaIcons.Home,
+                    contentDescription = null
                 )
             },
             colors = colors
@@ -69,9 +60,9 @@ fun RidaBottomBar(
             onClick = onActivity,
             label = { Text("Activity") },
             icon = {
-                Icon(
-                    imageVector = if (norm == "Activity") Icons.Filled.History else Icons.Outlined.History,
-                    contentDescription = "Activity"
+                RidaIcon(
+                    icon = RidaIcons.History,
+                    contentDescription = null
                 )
             },
             colors = colors
@@ -81,9 +72,9 @@ fun RidaBottomBar(
             onClick = onCenter,
             label = { Text("Ride") },
             icon = {
-                Icon(
-                    imageVector = Icons.Filled.DirectionsCar,
-                    contentDescription = "Request a ride"
+                RidaIcon(
+                    icon = RidaIcons.Rides,
+                    contentDescription = null
                 )
             },
             colors = colors
@@ -93,9 +84,9 @@ fun RidaBottomBar(
             onClick = onProfile,
             label = { Text("Profile") },
             icon = {
-                Icon(
-                    imageVector = if (norm == "Profile") Icons.Filled.Person else Icons.Outlined.Person,
-                    contentDescription = "Profile"
+                RidaIcon(
+                    icon = RidaIcons.Account,
+                    contentDescription = null
                 )
             },
             colors = colors

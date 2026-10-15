@@ -32,17 +32,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -86,6 +78,8 @@ import com.example.ridepassenger2.data.local.SessionManager
 import com.example.ridepassenger2.data.remote.LoginRequest
 import com.example.ridepassenger2.data.remote.RidaApiClient
 import com.example.ridepassenger2.data.repository.UserRepository
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.components.RidaLogo
 import kotlinx.coroutines.launch
 
@@ -223,8 +217,8 @@ fun SignInScreen(
                     },
                     placeholder = "you@example.com or 07XXXXXXXX",
                     leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.Email,
+                        RidaIcon(
+                            icon = RidaIcons.Mail,
                             contentDescription = null,
                             tint = RidaHint,
                             modifier = Modifier.size(20.dp)
@@ -271,8 +265,8 @@ fun SignInScreen(
                     },
                     placeholder = "Enter your password",
                     leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.Lock,
+                        RidaIcon(
+                            icon = RidaIcons.Lock,
                             contentDescription = null,
                             tint = RidaHint,
                             modifier = Modifier.size(20.dp)
@@ -283,8 +277,8 @@ fun SignInScreen(
                             onClick = { passwordVisible = !passwordVisible },
                             modifier = Modifier.size(48.dp)
                         ) {
-                            Icon(
-                                imageVector = if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                            RidaIcon(
+                                icon = if (passwordVisible) RidaIcons.HidePassword else RidaIcons.ShowPassword,
                                 contentDescription = if (passwordVisible) "Hide password" else "Show password",
                                 tint = RidaSecondary,
                                 modifier = Modifier.size(20.dp)
@@ -506,8 +500,8 @@ private fun RememberMeRow(checked: Boolean, onCheckedChange: (Boolean) -> Unit) 
                 contentAlignment = Alignment.Center
             ) {
                 if (checked) {
-                    Icon(
-                        imageVector = Icons.Filled.Check,
+                    RidaIcon(
+                        icon = RidaIcons.Check,
                         contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(15.dp)
@@ -564,8 +558,8 @@ private fun GradientSignInButton(enabled: Boolean, loading: Boolean, onClick: ()
         }
         Text("Sign In", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
         Spacer(Modifier.width(8.dp))
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+        RidaIcon(
+            icon = RidaIcons.Forward,
             contentDescription = null,
             tint = Color.White,
             modifier = Modifier.size(18.dp)
@@ -648,4 +642,3 @@ fun SignInScreenPreview() {
         )
     }
 }
-

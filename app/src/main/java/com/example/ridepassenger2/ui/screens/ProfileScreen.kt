@@ -25,6 +25,8 @@ import com.example.ridepassenger2.data.local.SessionManager
 import com.example.ridepassenger2.data.repository.RideRepository
 import com.example.ridepassenger2.data.repository.UserRepository
 import androidx.compose.runtime.LaunchedEffect
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 
 // Dark palette — locked to the home screen
 private val ProfPageBg = Color(0xFF0A0F14)
@@ -89,14 +91,14 @@ private fun ProfileScreenInternal(
             }
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
                     .background(ProfCardBg)
                     .border(1.dp, ProfBorder, CircleShape)
                     .clickable(onClick = onSettings),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "⚙", fontSize = 16.sp, color = ProfMuted)
+                RidaIcon(RidaIcons.Settings, contentDescription = "Settings", modifier = Modifier.size(20.dp), tint = ProfMuted)
             }
         }
 
@@ -148,10 +150,10 @@ private fun ProfileScreenInternal(
 
             // Menu
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ProfileMenuItem(icon = "👤", title = "Personal Information", subtitle = "Name, phone, email", onClick = { onMenuClick("personal") })
-                ProfileMenuItem(icon = "💳", title = "Payment Methods", subtitle = "Cards & mobile money", onClick = { onMenuClick("payment") })
-                ProfileMenuItem(icon = "📍", title = "Saved Addresses", subtitle = "Home, work, frequent places", onClick = { onMenuClick("addresses") })
-                ProfileMenuItem(icon = "⚙", title = "Ride Preferences", subtitle = "Seat preferences, notifications", onClick = { onMenuClick("prefs") })
+                ProfileMenuItem(icon = RidaIcons.EditProfile, title = "Personal Information", subtitle = "Name, phone, email", onClick = { onMenuClick("personal") })
+                ProfileMenuItem(icon = RidaIcons.Payment, title = "Payment Methods", subtitle = "Cards & mobile money", onClick = { onMenuClick("payment") })
+                ProfileMenuItem(icon = RidaIcons.SavedPlace, title = "Saved Addresses", subtitle = "Home, work, frequent places", onClick = { onMenuClick("addresses") })
+                ProfileMenuItem(icon = RidaIcons.Settings, title = "Ride Preferences", subtitle = "Seat preferences, notifications", onClick = { onMenuClick("prefs") })
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -163,7 +165,7 @@ private fun ProfileScreenInternal(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(text = "↗", fontSize = 16.sp, color = ProfMuted)
+                    RidaIcon(RidaIcons.Logout, contentDescription = null, modifier = Modifier.size(20.dp), tint = ProfMuted)
                     Text(text = "Log Out", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = ProfBody)
                 }
             }
@@ -196,14 +198,14 @@ private fun StatItemWithStar(value: String, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(text = value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = ProfTitle)
-            Text(text = "★", fontSize = 12.sp, color = ProfMint)
+            RidaIcon(RidaIcons.Star, contentDescription = null, modifier = Modifier.size(14.dp), tint = ProfMint)
         }
         Text(text = label, fontSize = 11.sp, color = ProfMuted, modifier = Modifier.padding(top = 2.dp))
     }
 }
 
 @Composable
-private fun ProfileMenuItem(icon: String, title: String, subtitle: String, onClick: () -> Unit) {
+private fun ProfileMenuItem(icon: Int, title: String, subtitle: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -217,13 +219,13 @@ private fun ProfileMenuItem(icon: String, title: String, subtitle: String, onCli
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(modifier = Modifier.size(34.dp).clip(CircleShape).background(ProfPill), contentAlignment = Alignment.Center) {
-                Text(text = icon, fontSize = 15.sp)
+                RidaIcon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = ProfMuted)
             }
             Column {
                 Text(text = title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = ProfBody)
                 Text(text = subtitle, fontSize = 11.sp, color = ProfMuted)
             }
         }
-        Text(text = "›", fontSize = 18.sp, color = ProfChevron)
+        RidaIcon(RidaIcons.ChevronRight, contentDescription = null, modifier = Modifier.size(20.dp), tint = ProfChevron)
     }
 }

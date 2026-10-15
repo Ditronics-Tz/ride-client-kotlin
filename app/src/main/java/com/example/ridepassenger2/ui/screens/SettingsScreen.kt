@@ -6,23 +6,19 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.outlined.Logout
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.theme.RidaLightTheme
 
@@ -58,8 +54,8 @@ fun SettingsScreen(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                RidaIcon(
+                    icon = RidaIcons.Back,
                     contentDescription = "Back",
                     tint = HelpTitleText
                 )
@@ -121,7 +117,7 @@ fun SettingsScreen(
                     Column {
                         // Communication
                         SettingsOptionRow(
-                            icon = Icons.Outlined.VolumeUp,
+                            icon = RidaIcons.Sound,
                             title = "Communication",
                             subtitle = "Notifications and updates",
                             onClick = onCommunication
@@ -134,7 +130,7 @@ fun SettingsScreen(
 
                         // Language
                         SettingsOptionRow(
-                            icon = Icons.Outlined.Language,
+                            icon = RidaIcons.Language,
                             title = "Language",
                             subtitle = "English",
                             onClick = onLanguage
@@ -147,7 +143,7 @@ fun SettingsScreen(
 
                         // Ride preferences
                         SettingsOptionRow(
-                            icon = Icons.Outlined.DirectionsCar,
+                            icon = RidaIcons.Rides,
                             title = "Ride preferences",
                             subtitle = "Customize your rides",
                             onClick = onRidePreferences
@@ -160,7 +156,7 @@ fun SettingsScreen(
 
                         // Calendar
                         SettingsOptionRow(
-                            icon = Icons.Outlined.CalendarToday,
+                            icon = RidaIcons.Calendar,
                             title = "Calendar",
                             subtitle = "Smart ride suggestions",
                             onClick = onCalendar
@@ -192,7 +188,7 @@ fun SettingsScreen(
                     Column {
                         // Privacy
                         SettingsOptionRow(
-                            icon = Icons.Outlined.Shield,
+                            icon = RidaIcons.Safety,
                             title = "Privacy",
                             subtitle = null,
                             onClick = onPrivacy
@@ -205,7 +201,7 @@ fun SettingsScreen(
 
                         // Sign in & security
                         SettingsOptionRow(
-                            icon = Icons.Outlined.Lock,
+                            icon = RidaIcons.Lock,
                             title = "Sign in & security",
                             subtitle = null,
                             onClick = onSignInSecurity
@@ -218,7 +214,7 @@ fun SettingsScreen(
 
                         // Legal
                         SettingsOptionRow(
-                            icon = Icons.Outlined.MenuBook,
+                            icon = RidaIcons.HelpArticles,
                             title = "Legal",
                             subtitle = null,
                             onClick = onLegal
@@ -242,8 +238,8 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.Logout,
+                        RidaIcon(
+                            icon = RidaIcons.Logout,
                             contentDescription = null,
                             tint = LogoutRed,
                             modifier = Modifier.size(24.dp)
@@ -263,7 +259,7 @@ fun SettingsScreen(
 
 @Composable
 private fun SettingsOptionRow(
-    icon: ImageVector,
+    icon: Int,
     title: String,
     subtitle: String?,
     onClick: () -> Unit
@@ -283,8 +279,8 @@ private fun SettingsOptionRow(
                 .background(HelpGreen.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
+            RidaIcon(
+                icon = icon,
                 contentDescription = null,
                 tint = HelpGreen,
                 modifier = Modifier.size(22.dp)
@@ -314,8 +310,8 @@ private fun SettingsOptionRow(
 
         Spacer(Modifier.width(12.dp))
 
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+        RidaIcon(
+            icon = RidaIcons.ChevronRight,
             contentDescription = null,
             tint = HelpMutedText,
             modifier = Modifier.size(20.dp)
