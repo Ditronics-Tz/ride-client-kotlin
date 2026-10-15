@@ -8,11 +8,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -22,6 +26,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.ridepassenger2.data.local.AppPrefs
+import com.example.ridepassenger2.data.local.SessionManager
+import com.example.ridepassenger2.data.repository.SupportRepository
 import com.example.ridepassenger2.ui.common.OtpState
 import com.example.ridepassenger2.ui.common.otpTick
 import com.example.ridepassenger2.ui.payment.AddMethodScreen
@@ -32,6 +39,7 @@ import com.example.ridepassenger2.ui.payment.MmVerifyPhase
 import com.example.ridepassenger2.ui.payment.PayDetailScreen
 import com.example.ridepassenger2.ui.payment.PayFilter
 import com.example.ridepassenger2.ui.payment.PayHistoryScreen
+import com.example.ridepassenger2.ui.payment.PayMethod
 import com.example.ridepassenger2.ui.payment.PayMethodsFlowScreen
 import com.example.ridepassenger2.ui.payment.PayTripPhase
 import com.example.ridepassenger2.ui.payment.PayTripScreen
@@ -63,11 +71,13 @@ import com.example.ridepassenger2.ui.support.RequestFormScreen
 import com.example.ridepassenger2.ui.support.RequestFormState
 import com.example.ridepassenger2.ui.support.SelfHelpScreen
 import com.example.ridepassenger2.ui.support.SupportHomeScreen
+import com.example.ridepassenger2.ui.support.TicketMsg
 import com.example.ridepassenger2.ui.support.TicketStatus
 import com.example.ridepassenger2.ui.support.Topic
 import com.example.ridepassenger2.ui.support.TopicScreen
 import com.example.ridepassenger2.ui.support.addAttachment
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
+import kotlinx.coroutines.launch
 
 object FlowRoutes {
     // Payment
@@ -99,34 +109,62 @@ object FlowRoutes {
 
 @Composable
 fun PaymentFlowNav(nav: NavHostController = rememberNavController()) {
+    val context = LocalContext.current
+    val paymentLabel by AppPrefs.payment(context).collectAsState(initial = "Cash")
+    val payMethodsState = remember(paymentLabel) {
+        MethodsUiState.Content(
+            listOf(
+                PayMethod("cash", "cash", "Cash", "Pay the driver after your ride", true)
+            )
+        )
+    }
     var mm by remember { mutableStateOf(MmSetupState()) }
     var trip by remember { mutableStateOf(PayTripState()) }
     var histFilter by remember { mutableStateOf(PayFilter.ALL) }
     NavHost(navController = nav, startDestination = FlowRoutes.PAY_METHODS) {
         composable(FlowRoutes.PAY_METHODS) {
-            PayMethodsFlowScreen(MethodsUiState.Content(FakePayments.methods()), { nav.popBackStack() }, { nav.navigate(FlowRoutes.PAY_ADD) }, {}, {})
+            PayMethodsFlowScreen(payMethodsState, { nav.popBackStack() }, { nav.navigate(FlowRoutes.PAY_ADD) }, {}, {})
         }
         composable(FlowRoutes.PAY_ADD) {
             AddMethodScreen(mm, { mm = mmReduce(mm, it) }, { nav.popBackStack() }, { nav.popBackStack() })
         }
         composable(FlowRoutes.PAY_HISTORY) {
-            PayHistoryScreen(FakePayments.history(), histFilter, { histFilter = it }, { nav.navigate(FlowRoutes.payDetail(it)) }, { nav.popBackStack() })
+            PayHistoryScreen(emptyList(), histFilter, { histFilter = it }, { nav.navigate(FlowRoutes.payDetail(it)) }, { nav.popBackStack() })
         }
-        composable(FlowRoutes.PAY_DETAIL, arguments = listOf(navArgument("id") { type = NavType.StringType })) { e ->
-            val id = e.arguments?.getString("id")
-            PayDetailScreen(FakePayments.history().firstOrNull { it.id == id }, { nav.popBackStack() }, { nav.navigate("${FlowRoutes.SUPPORT_FORM}?trip=$it") })
+        composable(FlowRoutes.PAY_DETAIL, arguments = listOf(navArgument("id") { type = NavType.StringType })) {
+            PayDetailScreen(null, { nav.popBackStack() }, { nav.navigate("${FlowRoutes.SUPPORT_FORM}?trip=$it") })
         }
         composable(FlowRoutes.PAY_TRIP) {
-            PayTripScreen(trip, "TSh 5,000", { trip = trip.copy(methodId = it) }, { trip = trip.copy(phase = PayTripPhase.WAITING) }, { trip = trip.copy(phase = PayTripPhase.WAITING) }, { trip = trip.copy(methodId = "cash", phase = PayTripPhase.PICK) }, { nav.popBackStack() })
+            PayTripScreen(trip, "—", { trip = trip.copy(methodId = it) }, { trip = trip.copy(phase = PayTripPhase.WAITING) }, { trip = trip.copy(phase = PayTripPhase.WAITING) }, { trip = trip.copy(methodId = "cash", phase = PayTripPhase.PICK) }, { nav.popBackStack() })
         }
     }
 }
 
 @Composable
 fun ProfileFlowNav(nav: NavHostController = rememberNavController()) {
-    var name by remember { mutableStateOf(NameEditState("Juma K.")) }
+    val context = LocalContext.current
+    val session by SessionManager.observe(context).collectAsState(initial = SessionManager.Session())
+    var name by remember(session.name) { mutableStateOf(NameEditState(session.name)) }
     var phone by remember { mutableStateOf(PhoneChangeState()) }
     var email by remember { mutableStateOf(EmailChangeState()) }
+    var sessions by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val resp = com.example.ridepassenger2.data.remote.RidaApiClient.api.getSessions()
+            val list = resp["sessions"] as? List<*> ?: emptyList<Any>()
+            sessions = list.mapNotNull { row ->
+                (row as? Map<*, *>)?.let { m ->
+                    val device = m["device_name"] ?: m["user_agent"] ?: "Device"
+                    val city = m["city"] ?: m["location"] ?: ""
+                    "$device • $city"
+                }
+            }
+        } catch (_: Exception) {
+            sessions = emptyList()
+        }
+    }
+
     NavHost(navController = nav, startDestination = FlowRoutes.EDIT_NAME) {
         composable(FlowRoutes.EDIT_NAME) {
             EditNameScreen(name, { name = name.copy(name = it, dirty = true) }, {}, { nav.popBackStack() })
@@ -134,7 +172,7 @@ fun ProfileFlowNav(nav: NavHostController = rememberNavController()) {
         composable(FlowRoutes.CHANGE_PHONE) {
             ChangePhoneScreen(phone, { phone = phone.copy(password = it) }, { phone = phone.copy(step = PhoneStep.ENTER_NEW) },
                 { phone = phoneEnterNew(phone, it) }, { phone = phoneValidateNew(phone) },
-                { phone = phone.copy(otp = phone.otp.copy(code = it)) }, { phone = phoneSubmitOtp(phone, "123456") }, { phone = phone.copy(otp = phone.otp.copy(resendInSec = 30)) }, { nav.popBackStack() })
+                { phone = phone.copy(otp = phone.otp.copy(code = it)) }, { phone = phoneSubmitOtp(phone, phone.otp.code) }, { phone = phone.copy(otp = phone.otp.copy(resendInSec = 30)) }, { nav.popBackStack() })
         }
         composable(FlowRoutes.CHANGE_EMAIL) {
             ChangeEmailScreen(email, { email = email.copy(password = it) }, { email = email.copy(step = EmailStep.ENTER_NEW) },
@@ -143,7 +181,7 @@ fun ProfileFlowNav(nav: NavHostController = rememberNavController()) {
         composable(FlowRoutes.PHOTO) { PhotoChangeScreen(null, null, {}, {}, { nav.popBackStack() }) }
         composable(FlowRoutes.SECURITY) {
             var pw by remember { mutableStateOf("") }; var cf by remember { mutableStateOf("") }
-            SecurityScreen(pw, cf, { pw = it }, { cf = it }, {}, {}, {}, { nav.popBackStack() })
+            SecurityScreen(pw, cf, { pw = it }, { cf = it }, sessions, {}, {}, {}, { nav.popBackStack() })
         }
         composable(FlowRoutes.DELETE) {
             var step by remember { mutableStateOf(0) }
@@ -159,32 +197,68 @@ fun ProfileFlowNav(nav: NavHostController = rememberNavController()) {
 fun SupportFlowNav(nav: NavHostController = rememberNavController()) {
     var form by remember { mutableStateOf(RequestFormState()) }
     var filter by remember { mutableStateOf<TicketStatus?>(null) }
+    val tickets by SupportRepository.tickets.collectAsState()
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) { SupportRepository.refresh() }
+
     NavHost(navController = nav, startDestination = FlowRoutes.SUPPORT_HOME) {
         composable(FlowRoutes.SUPPORT_HOME) {
-            SupportHomeScreen("", {}, FakeSupport.tickets(), { nav.navigate(FlowRoutes.SUPPORT_FORM) }, { nav.navigate(FlowRoutes.topic(it)) }, { nav.navigate(FlowRoutes.ticket(it)) }, {}, { nav.popBackStack() })
+            SupportHomeScreen("", {}, tickets, { nav.navigate(FlowRoutes.SUPPORT_FORM) }, { nav.navigate(FlowRoutes.topic(it)) }, { nav.navigate(FlowRoutes.ticket(it)) }, {}, { nav.popBackStack() })
         }
         composable(FlowRoutes.SUPPORT_TOPIC, arguments = listOf(navArgument("topic") { type = NavType.StringType })) { e ->
             val t = runCatching { Topic.valueOf(e.arguments?.getString("topic") ?: "OTHER") }.getOrDefault(Topic.OTHER)
             TopicScreen(t, { nav.navigate(FlowRoutes.SUPPORT_SELFHELP) }, { nav.popBackStack() })
         }
         composable(FlowRoutes.SUPPORT_SELFHELP) {
-            SelfHelpScreen("Jaribu kuingia tena na namba yako. Hakikisha OTP haijachelewa.", {}, { nav.navigate(FlowRoutes.SUPPORT_FORM) }, { nav.popBackStack() })
+            SelfHelpScreen("Check your connection and try again. If the issue continues, submit a support request.", {}, { nav.navigate(FlowRoutes.SUPPORT_FORM) }, { nav.popBackStack() })
         }
         composable(FlowRoutes.SUPPORT_FORM, arguments = listOf(navArgument("trip") { type = NavType.StringType; nullable = true; defaultValue = null })) {
             RequestFormScreen(form, { form = form.copy(subject = it, draftSaved = true) }, { form = form.copy(description = it, draftSaved = true) },
                 { form = addAttachment(form, "picha${form.attachments.size + 1}.jpg") }, { r -> form = form.copy(attachments = form.attachments - r) },
-                { form = form.copy(contact = it) }, { nav.navigate(FlowRoutes.SUPPORT_CONFIRM.replace("{id}", "R-1042")) }, { nav.popBackStack() })
+                { form = form.copy(contact = it) }, {
+                    form = form.copy(submitting = true)
+                    SupportRepository.createTicket(
+                        subject = form.subject,
+                        description = form.description,
+                        category = "ride",
+                        onSuccess = { id ->
+                            form = form.copy(submitting = false)
+                            nav.navigate(FlowRoutes.SUPPORT_CONFIRM.replace("{id}", id))
+                        },
+                        onError = { msg ->
+                            form = form.copy(submitting = false, error = msg)
+                        }
+                    )
+                }, { nav.popBackStack() })
         }
         composable(FlowRoutes.SUPPORT_CONFIRM, arguments = listOf(navArgument("id") { type = NavType.StringType })) { e ->
-            ConfirmScreen(e.arguments?.getString("id") ?: "R-1042", "Ombi limetumwa.", { nav.navigate(FlowRoutes.ticket("R-1042")) }, { nav.popBackStack() }, { nav.popBackStack() })
+            val id = e.arguments?.getString("id") ?: ""
+            ConfirmScreen(id, "Your request was submitted.", { nav.navigate(FlowRoutes.ticket(id)) }, { nav.popBackStack() }, { nav.popBackStack() })
         }
         composable(FlowRoutes.SUPPORT_MINE) {
-            MyRequestsScreen(FakeSupport.tickets(), filter, { filter = it }, { nav.navigate(FlowRoutes.ticket(it)) }, { nav.popBackStack() })
+            MyRequestsScreen(tickets, filter, { filter = it }, { nav.navigate(FlowRoutes.ticket(it)) }, { nav.popBackStack() })
         }
         composable(FlowRoutes.SUPPORT_DETAIL, arguments = listOf(navArgument("id") { type = NavType.StringType })) { e ->
-            val tk = FakeSupport.tickets().firstOrNull { it.id == e.arguments?.getString("id") }
-            var reply by remember { mutableStateOf("") }; var rating by remember { mutableStateOf(0) }
-            RequestDetailScreen(tk, FakeSupport.thread(), reply, { reply = it }, {}, {}, rating, { rating = it }, { nav.popBackStack() })
+            val id = e.arguments?.getString("id")
+            val tk = tickets.firstOrNull { it.id == id }
+            var reply by remember { mutableStateOf("") }
+            var rating by remember { mutableStateOf(0) }
+            var thread by remember { mutableStateOf<List<TicketMsg>>(emptyList()) }
+            LaunchedEffect(id) {
+                thread = if (id != null) SupportRepository.loadMessages(id) else emptyList()
+            }
+            RequestDetailScreen(tk, thread, reply, { reply = it }, {
+                if (id != null && reply.isNotBlank()) {
+                    SupportRepository.sendMessage(id, reply,
+                        onDone = {
+                            reply = ""
+                            scope.launch { thread = SupportRepository.loadMessages(id) }
+                        },
+                        onError = { }
+                    )
+                }
+            }, {}, rating, { rating = it }, { nav.popBackStack() })
         }
     }
 }

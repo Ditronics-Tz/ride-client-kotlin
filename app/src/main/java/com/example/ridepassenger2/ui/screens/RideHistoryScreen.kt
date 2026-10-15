@@ -18,7 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.ridepassenger2.data.mock.RideRepository
+import com.example.ridepassenger2.data.repository.RideRepository
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 
 // Dark palette — locked to the home screen
@@ -35,12 +35,14 @@ private val ActMintBtn = Color(0xFF35C48E)
 private val ActOnMint = Color(0xFF0C1014)
 
 data class RideHistoryItem(
+    val rideId: String? = null,
     val route: String,
     val date: String,
     val seatsShared: String,
     val people: String,
     val price: String,
-    val isShared: Boolean = true
+    val isShared: Boolean = false,
+    val rideStatus: String = "completed"
 )
 
 @Composable
@@ -57,8 +59,11 @@ private fun RideHistoryScreenInternal(
     onRideClick: (RideHistoryItem) -> Unit = {}
 ) {
     var filter by remember { mutableStateOf("All") }
-    // Live history — completed trips land here in real time.
     val items by RideRepository.history.collectAsState()
+    val loading by RideRepository.historyLoading.collectAsState()
+    val loadError by RideRepository.historyError.collectAsState()
+
+    LaunchedEffect(Unit) { RideRepository.refreshHistory() }
 
     // NOTE: Bottom bar is now provided by AppNavGraph Scaffold — do not duplicate here.
     // This screen is the "Activity" tab.
@@ -107,10 +112,41 @@ private fun RideHistoryScreenInternal(
         ) {
             val visible = when (filter) {
                 "Shared" -> items.filter { it.isShared }
-                "Completed" -> items.filter { !it.isShared }
+                "Completed" -> items.filter {
+                    it.rideStatus in setOf("completed", "finished")
+                }
                 else -> items
             }
-            if (visible.isEmpty()) {
+            if (loadError != null) {
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                            .background(ActCardBg).border(1.dp, ActBorder, RoundedCornerShape(16.dp))
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "Something went wrong", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = ActTitle)
+                        Text(text = loadError ?: "", fontSize = 12.sp, color = ActMuted)
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Box(
+                            modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(ActMintBtn)
+                                .clickable { RideRepository.refreshHistory() }
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Text(text = "Try again", fontSize = 12.sp, color = ActOnMint, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            } else if (loading && items.isEmpty()) {
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "Loading your rides…", fontSize = 13.sp, color = ActMuted)
+                    }
+                }
+            } else if (visible.isEmpty()) {
                 item {
                     Column(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))

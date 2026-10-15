@@ -36,7 +36,7 @@ fun AccountScreen(
     onSafetySelect: () -> Unit = {},
     onSavedPlacesSelect: () -> Unit = {},
     onSettingsSelect: () -> Unit = {},
-    passengerRating: String = "5.00",
+    passengerRating: String = "—",
 ) {
     Column(
         modifier = Modifier

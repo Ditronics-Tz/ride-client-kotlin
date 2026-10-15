@@ -85,6 +85,7 @@ import com.example.ridepassenger2.data.local.GoogleAuthManager
 import com.example.ridepassenger2.data.local.SessionManager
 import com.example.ridepassenger2.data.remote.RegisterRequest
 import com.example.ridepassenger2.data.remote.RidaApiClient
+import com.example.ridepassenger2.data.repository.UserRepository
 import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 import kotlinx.coroutines.launch
@@ -117,6 +118,7 @@ fun CreateAccountScreen(
     var phoneError by remember { mutableStateOf<String?>(null) }
     var pwError by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
+    var formError by remember { mutableStateOf<String?>(null) }
     var showTerms by remember { mutableStateOf(false) }
     var showPrivacy by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -131,28 +133,28 @@ fun CreateAccountScreen(
         val handle = email.trim().ifBlank { phone.trim() }
         scope.launch {
             isLoading = true
+            formError = null
             try {
-                try {
-                    val regReq = RegisterRequest(
-                        name = fullName.trim(),
-                        email = email.trim().ifBlank { "${phone.trim().replace(" ", "")}@rida.tz" },
-                        password = password
-                    )
-                    val sessionResp = RidaApiClient.api.register(regReq)
-                    val user = sessionResp.user
-                    SessionManager.save(
-                        context = context,
-                        name = user.name.ifBlank { fullName.trim() },
-                        handle = handle,
-                        phone = user.phone ?: phone.trim(),
-                        email = user.email ?: email.trim(),
-                        accessToken = sessionResp.getEffectiveAccessToken(),
-                        refreshToken = sessionResp.getEffectiveRefreshToken()
-                    )
-                } catch (e: Exception) {
-                    SessionManager.save(context, fullName.trim(), handle, phone.trim(), email.trim())
-                }
+                val regReq = RegisterRequest(
+                    name = fullName.trim(),
+                    email = email.trim().ifBlank { "${phone.trim().replace(" ", "")}@rida.tz" },
+                    password = password
+                )
+                val sessionResp = RidaApiClient.api.register(regReq)
+                val user = sessionResp.user
+                SessionManager.save(
+                    context = context,
+                    name = user.name.ifBlank { fullName.trim() },
+                    handle = handle,
+                    phone = user.phone ?: phone.trim(),
+                    email = user.email ?: email.trim(),
+                    accessToken = sessionResp.getEffectiveAccessToken(),
+                    refreshToken = sessionResp.getEffectiveRefreshToken()
+                )
+                UserRepository.refreshSessionFromApi(context)
                 onCreateAccount()
+            } catch (e: Exception) {
+                formError = e.message ?: "Could not create account. Try again."
             } finally {
                 isLoading = false
             }
@@ -344,6 +346,7 @@ fun CreateAccountScreen(
                     isError = pwError != null
                 )
                 AuthError(pwError)
+                AuthError(formError)
 
                 Spacer(Modifier.height(14.dp))
                 GradientPrimaryButton(

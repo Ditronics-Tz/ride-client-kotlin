@@ -17,8 +17,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ridepassenger2.data.mock.RidePhase
-import com.example.ridepassenger2.data.mock.RideRepository
+import com.example.ridepassenger2.data.repository.RidePhase
+import com.example.ridepassenger2.data.repository.RideRepository
+import com.example.ridepassenger2.data.remote.RidaApiClient
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import com.example.ridepassenger2.data.remote.MapServiceFactory
 import com.example.ridepassenger2.ui.components.HomeIndicator
 import com.example.ridepassenger2.ui.map.RidaMapView
@@ -51,14 +54,16 @@ fun RideDetailsScreen(
     val showSubtitle = liveRide?.driver?.let { "${it.name} ★ ${it.rating} • ${it.car}" }
         ?: receipt?.let { "${it.date} • ${it.people}" }
         ?: selected?.let { "${it.date} • ${it.people}" } ?: "Shared ride • 1-4 seats"
-    val showPrice = liveRide?.price ?: receipt?.price ?: selected?.price ?: "TZS 2,500"
-    val showEta = liveRide?.let { "${it.etaMin} min" } ?: "12 min"
+    val showPrice = liveRide?.price ?: receipt?.price ?: selected?.price ?: "—"
+    val showEta = liveRide?.let { "${it.etaMin} min" } ?: "—"
     val pickupLabel = liveRide?.pickup
-        ?: receipt?.route?.substringBefore("→")?.trim().orEmpty().ifBlank { "Your location" }
-        ?: histParts.getOrNull(0)?.ifBlank { "Kariakoo" } ?: "Kariakoo"
+        ?: receipt?.route?.substringBefore("→")?.trim().orEmpty().ifBlank { "Pickup" }
+        ?: histParts.getOrNull(0)?.ifBlank { "Pickup" } ?: "Pickup"
     val dropoffLabel = liveRide?.destination
         ?: receipt?.route?.substringAfter("→")?.trim().orEmpty().ifBlank { "Destination" }
-        ?: histParts.getOrNull(1)?.ifBlank { "Mwenge" } ?: "Mwenge"
+        ?: histParts.getOrNull(1)?.ifBlank { "Destination" } ?: "Destination"
+    val scope = rememberCoroutineScope()
+    val driverPhone = liveRide?.driver?.phone?.filter { it.isDigit() || it == '+' }
 
     // History has no coordinates — geocode the drop-off once so its map is real.
     var histDest by remember(selected) { mutableStateOf<GeoPoint?>(null) }
@@ -194,14 +199,6 @@ fun RideDetailsScreen(
                                 title = "Driver arriving now",
                                 subtitle = "Meet at $pickupLabel • ${liveRide?.driver?.plate ?: ""}"
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Box(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                                    .background(MintRoute)
-                                    .clickable(onClick = { RideRepository.markInTrip() })
-                                    .padding(vertical = 13.dp),
-                                contentAlignment = Alignment.Center
-                            ) { Text(text = "I'm in — start trip", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                         }
                         RidePhase.IN_TRIP -> {
                             PhaseBanner(
@@ -209,14 +206,6 @@ fun RideDetailsScreen(
                                 title = "You're on your way",
                                 subtitle = "Heading to $dropoffLabel"
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Box(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                                    .background(MintRoute)
-                                    .clickable(onClick = { RideRepository.completeRide() })
-                                    .padding(vertical = 13.dp),
-                                contentAlignment = Alignment.Center
-                            ) { Text(text = "Complete trip • $showPrice", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                         }
                         else -> Unit
                     }
@@ -250,7 +239,8 @@ fun RideDetailsScreen(
                             modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
                                 .background(Color(0xFFFAFCFB)).border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(12.dp))
                                 .clickable {
-                                    try { context.startActivity(android.content.Intent(android.content.Intent.ACTION_DIAL, "tel:+255700000000".toUri())) }
+                                    val tel = driverPhone?.takeIf { it.length >= 9 } ?: return@clickable
+                                    try { context.startActivity(android.content.Intent(android.content.Intent.ACTION_DIAL, "tel:$tel".toUri())) }
                                     catch (_: Exception) { android.widget.Toast.makeText(context, "Calling driver…", android.widget.Toast.LENGTH_SHORT).show() }
                                 }.padding(vertical = 11.dp),
                             contentAlignment = Alignment.Center
@@ -259,7 +249,8 @@ fun RideDetailsScreen(
                             modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
                                 .background(Color(0xFFFAFCFB)).border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(12.dp))
                                 .clickable {
-                                    try { context.startActivity(android.content.Intent(android.content.Intent.ACTION_SENDTO, "smsto:+255700000000".toUri())) }
+                                    val tel = driverPhone?.takeIf { it.length >= 9 } ?: return@clickable
+                                    try { context.startActivity(android.content.Intent(android.content.Intent.ACTION_SENDTO, "smsto:$tel".toUri())) }
                                     catch (_: Exception) { android.widget.Toast.makeText(context, "Messaging driver…", android.widget.Toast.LENGTH_SHORT).show() }
                                 }.padding(vertical = 11.dp),
                             contentAlignment = Alignment.Center
@@ -268,10 +259,31 @@ fun RideDetailsScreen(
                             modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
                                 .background(Color(0xFFFAFCFB)).border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(12.dp))
                                 .clickable {
-                                    val r = liveRide
-                                    val text = if (r != null) "I'm in a Rida ${r.option}: ${r.pickup} → ${r.destination}, driver ${r.driver?.name ?: ""} ${r.driver?.plate ?: ""}." else "My Rida trip."
-                                    try { context.startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(android.content.Intent.EXTRA_TEXT, text) }, "Share trip")) }
-                                    catch (_: Exception) { }
+                                    val rideId = liveRide?.rideId
+                                    scope.launch {
+                                        val text = if (rideId != null) {
+                                            try {
+                                                val link = RidaApiClient.api.shareRide(rideId).shareUrl
+                                                "Track my Rida trip: $link"
+                                            } catch (_: Exception) {
+                                                val r = liveRide
+                                                "I'm in a Rida ${r?.option}: ${r?.pickup} → ${r?.destination}."
+                                            }
+                                        } else {
+                                            "My Rida trip."
+                                        }
+                                        try {
+                                            context.startActivity(
+                                                android.content.Intent.createChooser(
+                                                    android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                                        type = "text/plain"
+                                                        putExtra(android.content.Intent.EXTRA_TEXT, text)
+                                                    },
+                                                    "Share trip"
+                                                )
+                                            )
+                                        } catch (_: Exception) { }
+                                    }
                                 }.padding(vertical = 11.dp),
                             contentAlignment = Alignment.Center
                         ) { Text(text = "📤 Share", color = Color(0xFF111827), fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
@@ -294,12 +306,15 @@ fun RideDetailsScreen(
                         Text(text = showPrice, color = Color(0xFF111827), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Text(text = "Total fare", color = Color(0xFF667085), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
                     }
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(text = "👥", color = Color(0xFF667085), fontSize = 14.sp)
-                            Text(text = "2/3", color = Color(0xFF111827), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    val active = liveRide
+                    if (active != null && active.option.contains("share", ignoreCase = true)) {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(text = "👥", color = Color(0xFF667085), fontSize = 14.sp)
+                                Text(text = "Shared", color = Color(0xFF111827), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            }
+                            Text(text = "Ride type", color = Color(0xFF667085), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
                         }
-                        Text(text = "Seats filled", color = Color(0xFF667085), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
                     }
                 }
 

@@ -116,22 +116,6 @@ object GoogleAuthManager {
             Result.failure(e)
         } catch (e: GetCredentialException) {
             Log.e("GoogleAuthManager", "Credential error: ${e.message}", e)
-            if (e.message?.contains("28444") == true || e.message?.contains("Developer console") == true) {
-                Log.w("GoogleAuthManager", "Google Developer Console SHA-1 missing for com.example.ridepassenger2. Using local fallback demo session.")
-                val demoResult = GoogleUserResult(
-                    idToken = "demo-google-token",
-                    displayName = "Google User",
-                    email = "google.user@example.com",
-                    profilePictureUrl = null
-                )
-                SessionManager.save(
-                    context = context,
-                    name = demoResult.displayName,
-                    handle = "@google.user",
-                    email = demoResult.email
-                )
-                return Result.success(demoResult)
-            }
             Result.failure(e)
         } catch (e: Exception) {
             Log.e("GoogleAuthManager", "Google Sign-In failed", e)
