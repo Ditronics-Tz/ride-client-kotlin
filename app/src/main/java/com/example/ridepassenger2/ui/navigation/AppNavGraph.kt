@@ -67,8 +67,8 @@ object Routes {
     const val FLOW_GALLERY = "flow_gallery"
 }
 
-// Bottom bar is shown only on the three primary tabs
-private val BottomBarRoutes = setOf(Routes.HOME_MAP, Routes.RIDE_HISTORY, Routes.PROFILE)
+// The legacy account route opens the same Profile tab.
+private val BottomBarRoutes = setOf(Routes.HOME_MAP, Routes.RIDE_HISTORY, Routes.PROFILE, Routes.ACCOUNT)
 private val ThemeRoutes = setOf(
     Routes.PAY_FLOW, Routes.PAY_HISTORY, Routes.PROFILE_FLOW,
     Routes.SUPPORT_FLOW, Routes.FLOW_GALLERY
@@ -88,14 +88,14 @@ fun AppNavGraph(
     val view = LocalView.current
     val usesThemeBackground = visibleRoute in ThemeRoutes
     val themeIsLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
-    // These two destinations have dark headers; the shared bottom bar is white.
+    // Ride history has a dark header; Profile and the shared bottom bar use light surfaces.
     // Use the actual screen palette rather than the device's dark-mode setting.
     SideEffect {
         val window = (context as? Activity)?.window
         if (window != null) {
             WindowCompat.getInsetsController(window, view).apply {
                 isAppearanceLightStatusBars = if (usesThemeBackground) themeIsLight else
-                    visibleRoute != Routes.PROFILE && visibleRoute != Routes.RIDE_HISTORY
+                    visibleRoute != Routes.RIDE_HISTORY
                 isAppearanceLightNavigationBars = !usesThemeBackground || themeIsLight
             }
         }
@@ -113,13 +113,14 @@ fun AppNavGraph(
     val selectedTab = when (currentRoute) {
         Routes.HOME_MAP -> "Home"
         Routes.RIDE_HISTORY -> "Activity"
-        Routes.PROFILE -> "Profile"
+        Routes.PROFILE, Routes.ACCOUNT -> "Profile"
         else -> "Home"
     }
 
     // Helpers for bottom-bar navigation — singleTop + restoreState, no duplicate stacks
     fun navigateBottomBar(route: String) {
-        if (currentRoute == route) return
+        val activeRoute = if (currentRoute == Routes.ACCOUNT) Routes.PROFILE else currentRoute
+        if (activeRoute == route) return
         navController.navigate(route) {
             launchSingleTop = true
             restoreState = true
@@ -255,20 +256,24 @@ fun AppNavGraph(
                         }
                     )
                 }
-                composable(Routes.PROFILE) {
-                    ProfileScreen(
-                        onSettings = { navController.navigate(Routes.SETTINGS) },
-                        onMenuClick = { key ->
-                            when (key) {
-                                "personal" -> navController.navigate(Routes.PERSONAL_INFO)
-                                "payment" -> navController.navigate(Routes.PAYMENT)
-                                "addresses" -> navController.navigate(Routes.SAVED_PLACES)
-                                "prefs" -> navController.navigate(Routes.RIDE_PREFS)
-                                else -> navController.navigate(Routes.SETTINGS)
-                            }
-                        },
-                        onLogOut = { logOut() }
-                    )
+                listOf(Routes.PROFILE, Routes.ACCOUNT).forEach { route ->
+                    composable(route) {
+                        ProfileScreen(
+                            onSettings = { navController.navigate(Routes.SETTINGS) },
+                            onMenuClick = { key ->
+                                when (key) {
+                                    "personal" -> navController.navigate(Routes.PERSONAL_INFO)
+                                    "payment" -> navController.navigate(Routes.PAYMENT)
+                                    "addresses" -> navController.navigate(Routes.SAVED_PLACES)
+                                    "prefs" -> navController.navigate(Routes.RIDE_PREFS)
+                                    "support" -> navController.navigate(Routes.HELP_HUB)
+                                    "safety" -> navController.navigate(Routes.SAFETY)
+                                    else -> navController.navigate(Routes.SETTINGS)
+                                }
+                            },
+                            onLogOut = { logOut() }
+                        )
+                    }
                 }
                 composable(Routes.SETTINGS) {
                     SettingsScreen(
@@ -357,18 +362,6 @@ fun AppNavGraph(
                         onBack = { navController.popBackStack() },
                         onTopicSelect = { navController.navigate(Routes.HELP_CENTER) },
                         onChatSupport = { navController.navigate(Routes.CONTACT_US) }
-                    )
-                }
-                composable(Routes.ACCOUNT) {
-                    AccountScreen(
-                        onBack = { navController.popBackStack() },
-                        onVerifyIdentity = { navController.navigate(Routes.PERSONAL_INFO) },
-                        onProfileSelect = { navController.navigate(Routes.PERSONAL_INFO) },
-                        onPaymentSelect = { navController.navigate(Routes.PAYMENT) },
-                        onSupportSelect = { navController.navigate(Routes.HELP_HUB) },
-                        onSafetySelect = { navController.navigate(Routes.SAFETY) },
-                        onSavedPlacesSelect = { navController.navigate(Routes.SAVED_PLACES) },
-                        onSettingsSelect = { navController.navigate(Routes.SETTINGS) }
                     )
                 }
                 // Separate flow graphs — new routes only, existing ones unchanged.
