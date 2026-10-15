@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.ridepassenger2.data.remote.SessionResponse
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -88,16 +89,31 @@ object SessionManager {
 
     suspend fun saveGoogleSession(
         context: Context,
-        result: GoogleAuthManager.GoogleUserResult
+        response: SessionResponse
     ) {
+        val user = response.user
+        val name = user.fullName?.takeIf { it.isNotBlank() } ?: user.name.orEmpty()
+        val email = user.email.orEmpty()
+        val phone = user.phoneNumber?.takeIf { it.isNotBlank() } ?: user.phone.orEmpty()
         context.sessionStore.edit { prefs ->
             prefs[LOGGED_IN] = true
-            if (result.displayName.isBlank()) prefs.remove(NAME)
-            else prefs[NAME] = result.displayName.trim()
-            prefs[HANDLE] = "@${result.email.substringBefore("@")}"
-            prefs[EMAIL] = result.email
-            prefs[ACCESS_TOKEN] = result.idToken
-            result.profilePictureUrl?.let { prefs[PROFILE_PIC] = it }
+            if (name.isBlank()) prefs.remove(NAME) else prefs[NAME] = name.trim()
+            if (email.isBlank()) {
+                prefs.remove(HANDLE)
+                prefs.remove(EMAIL)
+            } else {
+                prefs[HANDLE] = "@${email.substringBefore("@")}"
+                prefs[EMAIL] = email
+            }
+            if (phone.isBlank()) prefs.remove(PHONE) else prefs[PHONE] = phone
+            response.isProfileComplete()?.let { prefs[PROFILE_COMPLETED] = it }
+                ?: prefs.remove(PROFILE_COMPLETED)
+            prefs[ACCESS_TOKEN] = response.getEffectiveAccessToken()
+            response.getEffectiveRefreshToken().takeIf { it.isNotBlank() }?.let {
+                prefs[REFRESH_TOKEN] = it
+            } ?: prefs.remove(REFRESH_TOKEN)
+            // The Google credential's photo is not a saved Rida profile field.
+            prefs.remove(PROFILE_PIC)
         }
     }
 

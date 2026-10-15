@@ -300,15 +300,13 @@ fun CreateAccountScreen(
                             try {
                                 val result = GoogleAuthManager.signIn(context)
                                 if (result.isSuccess) {
-                                    val googleUser = result.getOrNull()!!
-                                    SessionManager.saveGoogleSession(context, googleUser)
                                     onGoogle()
                                 } else {
                                     val err = result.exceptionOrNull()
                                     if (err !is GetCredentialCancellationException) {
                                         Toast.makeText(
                                             context,
-                                            "Google Sign-In failed: ${err?.localizedMessage ?: "Unknown error"}",
+                                            "Google Sign-In is unavailable right now. Try again or sign in with email.",
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     }

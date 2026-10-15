@@ -33,7 +33,7 @@ interface RidaApi {
     suspend fun login(@Body request: LoginRequest): SessionResponse
 
     @POST("auth/google/challenge")
-    suspend fun googleChallenge(): GoogleChallengeResponse
+    suspend fun googleChallenge(@Body body: Map<String, String> = emptyMap()): GoogleChallengeResponse
 
     @POST("auth/google")
     suspend fun googleExchange(@Body request: GoogleExchangeRequest): SessionResponse

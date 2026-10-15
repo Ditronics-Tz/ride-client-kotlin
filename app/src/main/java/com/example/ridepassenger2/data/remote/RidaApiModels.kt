@@ -42,8 +42,10 @@ data class RefreshRequest(
 data class UserDto(
     val id: String,
     val name: String? = null,
+    @param:Json(name = "full_name") val fullName: String? = null,
     val email: String? = null,
     val phone: String? = null,
+    @param:Json(name = "phone_number") val phoneNumber: String? = null,
     val role: String? = null,
     val status: String? = null,
     @param:Json(name = "is_active") val isActive: Boolean? = true,
