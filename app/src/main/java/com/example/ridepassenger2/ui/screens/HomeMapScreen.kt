@@ -551,16 +551,20 @@ private fun RideStatusCard(phase: RidePhase, ride: ActiveRide, onCancel: () -> U
                             )
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(text = ride.driver?.name.orEmpty(), fontSize = 12.sp, color = DarkBody, fontWeight = FontWeight.SemiBold)
-                                RidaIcon(RidaIcons.Star, contentDescription = null, modifier = Modifier.size(13.dp), tint = Mint)
-                                Text(text = ride.driver?.rating?.toString().orEmpty(), fontSize = 12.sp, color = DarkBody, fontWeight = FontWeight.SemiBold)
+                                ride.driver?.rating?.takeIf { it > 0 }?.let { rating ->
+                                    RidaIcon(RidaIcons.Star, contentDescription = null, modifier = Modifier.size(13.dp), tint = Mint)
+                                    Text(text = rating.toString(), fontSize = 12.sp, color = DarkBody, fontWeight = FontWeight.SemiBold)
+                                }
                             }
                             Text(
                                 text = "${ride.driver?.car ?: ""} • ${ride.driver?.plate ?: ""}",
                                 fontSize = 11.sp, color = DarkMuted
                             )
                         }
-                        Box(modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(Mint.copy(alpha = 0.14f)).padding(horizontal = 8.dp, vertical = 4.dp)) {
-                            Text(text = "${ride.etaMin} min", fontSize = 11.sp, color = Mint, fontWeight = FontWeight.Bold)
+                        ride.etaMin?.takeIf { it > 0 }?.let { eta ->
+                            Box(modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(Mint.copy(alpha = 0.14f)).padding(horizontal = 8.dp, vertical = 4.dp)) {
+                                Text(text = "$eta min", fontSize = 11.sp, color = Mint, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }

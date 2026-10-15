@@ -88,14 +88,13 @@ fun AppNavGraph(
     val view = LocalView.current
     val usesThemeBackground = visibleRoute in ThemeRoutes
     val themeIsLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
-    // Ride history has a dark header; Profile and the shared bottom bar use light surfaces.
+    // Main screen headers and the shared bottom bar use light surfaces.
     // Use the actual screen palette rather than the device's dark-mode setting.
     SideEffect {
         val window = (context as? Activity)?.window
         if (window != null) {
             WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = if (usesThemeBackground) themeIsLight else
-                    visibleRoute != Routes.RIDE_HISTORY
+                isAppearanceLightStatusBars = !usesThemeBackground || themeIsLight
                 isAppearanceLightNavigationBars = !usesThemeBackground || themeIsLight
             }
         }

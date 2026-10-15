@@ -134,8 +134,7 @@ object RideRepository {
                 val ride = resp.rides.firstOrNull { !it.isTerminal() } ?: return@launch
                 activeRideId = ride.id
                 lastOptionLabel = ride.vehicleType ?: "Standard"
-                val eta = (_routeSnapshot.value?.durationS?.div(60)?.toInt() ?: 10).coerceAtLeast(1)
-                applyRideResponse(ride, eta)
+                applyRideResponse(ride)
                 startPolling(ride.id)
             } catch (_: Exception) { }
         }
@@ -152,7 +151,7 @@ object RideRepository {
         }
     }
 
-    fun requestRide(pickup: String, destination: String, price: String, option: String, etaMin: Int) {
+    fun requestRide(pickup: String, destination: String, price: String, option: String) {
         if (isBusy()) return
         val snap = _routeSnapshot.value
         if (snap == null) {
@@ -171,7 +170,7 @@ object RideRepository {
                 )
                 val ride = RidaApiClient.api.createRide(RidaApiClient.generateIdempotencyKey(), req)
                 activeRideId = ride.id
-                applyRideResponse(ride, etaMin)
+                applyRideResponse(ride)
                 startPolling(ride.id)
             } catch (e: Exception) {
                 _rideActionError.value = e.message ?: "Could not request ride"
@@ -255,8 +254,8 @@ object RideRepository {
         _lastCompleted.value = null
     }
 
-    private fun applyRideResponse(ride: RideResponse, etaMin: Int) {
-        val active = ride.toActiveRide(etaMin, lastOptionLabel)
+    private fun applyRideResponse(ride: RideResponse) {
+        val active = ride.toActiveRide(lastOptionLabel)
         if (ride.status.lowercase(Locale.US) in setOf("completed", "finished")) {
             val item = ride.toHistoryItem()
             _lastCompleted.value = item
@@ -277,7 +276,6 @@ object RideRepository {
                 delay(4000)
                 try {
                     val ride = RidaApiClient.api.getRide(rideId)
-                    val eta = (_routeSnapshot.value?.durationS?.div(60)?.toInt() ?: 10).coerceAtLeast(1)
                     if (ride.isTerminal()) {
                         if (ride.status.lowercase(Locale.US) in setOf("completed", "finished")) {
                             _lastCompleted.value = ride.toHistoryItem()
@@ -289,7 +287,7 @@ object RideRepository {
                         refreshHistory()
                         break
                     } else {
-                        applyRideResponse(ride, eta)
+                        applyRideResponse(ride)
                     }
                     if (ride.driver != null) {
                         val locResp = RidaApiClient.api.getDriverLocation(rideId)

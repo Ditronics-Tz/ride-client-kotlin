@@ -6,7 +6,7 @@ enum class RidePhase { IDLE, SEARCHING, DRIVER_FOUND, ARRIVING, IN_TRIP }
 
 data class RideDriverInfo(
     val name: String,
-    val rating: Double,
+    val rating: Double?,
     val car: String,
     val plate: String,
     val phone: String? = null
@@ -20,7 +20,7 @@ data class ActiveRide(
     val destination: String,
     val price: String,
     val option: String,
-    val etaMin: Int
+    val etaMin: Int? = null
 )
 
 data class ScheduledRideUi(

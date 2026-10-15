@@ -1,479 +1,570 @@
 package com.example.ridepassenger2.ui.screens
 
+import android.content.Intent
+import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.core.net.toUri
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
+import com.example.ridepassenger2.data.remote.MapServiceFactory
+import com.example.ridepassenger2.data.remote.RidaApiClient
+import com.example.ridepassenger2.data.repository.RideDriverInfo
 import com.example.ridepassenger2.data.repository.RidePhase
 import com.example.ridepassenger2.data.repository.RideRepository
-import com.example.ridepassenger2.data.remote.RidaApiClient
-import kotlinx.coroutines.launch
-import androidx.compose.runtime.rememberCoroutineScope
-import com.example.ridepassenger2.data.remote.MapServiceFactory
-import com.example.ridepassenger2.ui.components.HomeIndicator
 import com.example.ridepassenger2.ui.components.RidaIcon
 import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.map.RidaMapView
-import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
-import androidx.compose.ui.tooling.preview.Preview
+import com.example.ridepassenger2.ui.theme.RidaLightTheme
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import org.osmdroid.util.GeoPoint
 
-private val DetailsBg = Color(0xFFF6F8F7)
-private val SheetBg = Color.White
-private val SheetBorder = Color(0xFFDCE8E3)
-private val MintRoute = Color(0xFF00C878)
-private val MintDot = Color(0xFF00B368)
+private val RideError = Color(0xFFD92D20)
 
 @Composable
-fun RideDetailsScreen(
-    onBack: () -> Unit = {},
-    onCancel: () -> Unit = {}
-) {
+fun RideDetailsScreen(onBack: () -> Unit = {}, onCancel: () -> Unit = {}) {
     val liveRide by RideRepository.activeRide.collectAsState()
     val selected by RideRepository.selectedHistory.collectAsState()
     val justCompleted by RideRepository.lastCompleted.collectAsState()
     val snapshot by RideRepository.routeSnapshot.collectAsState()
     val driverPin by RideRepository.driverPin.collectAsState()
-    val context = androidx.compose.ui.platform.LocalContext.current
-    // Precedence: live ride → just-completed receipt → tapped history → empty.
-    val receipt = if (liveRide == null) justCompleted else null
-    // History fallback: when opened from Activity, show that trip.
-    val histParts = selected?.route?.split("→")?.map { it.trim() }.orEmpty()
-    val showTitle = liveRide?.option ?: receipt?.seatsShared ?: selected?.seatsShared ?: "Standard"
-    val showSubtitle = receipt?.let { "${it.date} • ${it.people}" }
-        ?: selected?.let { "${it.date} • ${it.people}" } ?: "Shared ride • 1-4 seats"
-    val showPrice = liveRide?.price ?: receipt?.price ?: selected?.price ?: "—"
-    val showEta = liveRide?.let { "${it.etaMin} min" } ?: "—"
-    val pickupLabel = liveRide?.pickup
-        ?: receipt?.route?.substringBefore("→")?.trim().orEmpty().ifBlank { "Pickup" }
-        ?: histParts.getOrNull(0)?.ifBlank { "Pickup" } ?: "Pickup"
-    val dropoffLabel = liveRide?.destination
-        ?: receipt?.route?.substringAfter("→")?.trim().orEmpty().ifBlank { "Destination" }
-        ?: histParts.getOrNull(1)?.ifBlank { "Destination" } ?: "Destination"
+    val ui = RideDetailsUiState.from(liveRide, justCompleted, selected)
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val driverPhone = liveRide?.driver?.phone?.filter { it.isDigit() || it == '+' }
+    val driverPhone = ui.activeRide?.driver?.phone?.filter { it.isDigit() || it == '+' }
+    var isSharing by remember { mutableStateOf(false) }
+    var historyDestination by remember(selected) { mutableStateOf<GeoPoint?>(null) }
 
-    // History has no coordinates — geocode the drop-off once so its map is real.
-    var histDest by remember(selected) { mutableStateOf<GeoPoint?>(null) }
-    LaunchedEffect(selected) {
-        histDest = null
-        val target = if (liveRide == null && receipt == null) selected else null
-        if (target != null) {
+    LaunchedEffect(ui.historyItem, ui.activeRide?.rideId, ui.isReceipt) {
+        historyDestination = null
+        if (ui.activeRide == null && !ui.isReceipt && ui.historyItem != null) {
             try {
-                val q = target.route.substringAfter("→").trim().ifBlank { target.route }
-                val places = MapServiceFactory.nominatim.search(query = "$q, Dar es Salaam", limit = 1)
-                places.firstOrNull()?.let { histDest = GeoPoint(it.lat.toDouble(), it.lon.toDouble()) }
-            } catch (_: Exception) { }
+                val query = ui.historyItem.route.substringAfter("→").trim()
+                    .ifBlank { ui.historyItem.route }
+                val places = MapServiceFactory.nominatim.search(query = "$query, Dar es Salaam", limit = 1)
+                places.firstOrNull()?.let {
+                    historyDestination = GeoPoint(it.lat.toDouble(), it.lon.toDouble())
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Keep the city map when this historical address cannot be geocoded.
+            }
         }
     }
 
-    // Live map inputs: snapshot route for live/receipt, geocoded pin for history.
-    val useSnapshot = (liveRide != null || receipt != null) && snapshot != null
-    val mapCenter = when {
-        useSnapshot -> GeoPoint(
-            (snapshot!!.origin.latitude + snapshot!!.destination.latitude) / 2,
-            (snapshot!!.origin.longitude + snapshot!!.destination.longitude) / 2
+    val visibleSnapshot = snapshot?.takeIf { ui.activeRide != null || ui.isReceipt }
+    val mapCenter = visibleSnapshot?.let {
+        GeoPoint(
+            (it.origin.latitude + it.destination.latitude) / 2,
+            (it.origin.longitude + it.destination.longitude) / 2
         )
-        histDest != null -> histDest!!
-        else -> GeoPoint(-6.7924, 39.2083)
-    }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(DetailsBg)
-    ) {
-        // Live map — OSRM road route + moving driver pin, Bolt-style night tiles.
-        RidaMapView(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(300.dp)
-                .align(Alignment.TopCenter),
-            center = mapCenter,
-            zoom = if (useSnapshot && (snapshot!!.distanceM ?: 9999.0) < 3000) 15.0 else 13.5,
-            useGoogleTiles = false,
-            useSatellite = false,
-            useDarkTiles = false,
-            currentLocation = snapshot?.origin,
-            destination = if (useSnapshot) snapshot!!.destination else histDest,
-            routePoints = if (useSnapshot) snapshot!!.points else emptyList(),
-            driverLocations = listOfNotNull(if (liveRide != null) driverPin else null)
-        )
+    } ?: historyDestination ?: GeoPoint(-6.7924, 39.2083)
 
-        // Top bar
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp)
+    fun contactDriver(action: String, scheme: String) {
+        val phone = driverPhone?.takeIf { it.length >= 9 } ?: return
+        try {
+            context.startActivity(Intent(action, "$scheme:$phone".toUri()))
+        } catch (_: Exception) {
+            Toast.makeText(context, "No app is available to contact your driver.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    RideDetailsScreenContent(
+        ui = ui,
+        canContactDriver = driverPhone?.let { it.length >= 9 } == true,
+        isSharing = isSharing,
+        onBack = onBack,
+        onCall = { contactDriver(Intent.ACTION_DIAL, "tel") },
+        onMessage = { contactDriver(Intent.ACTION_SENDTO, "smsto") },
+        onShare = {
+            val ride = ui.activeRide
+            if (ride != null && !isSharing) {
+                scope.launch {
+                    isSharing = true
+                    try {
+                        val text = try {
+                            "Track my Rida trip: ${RidaApiClient.api.shareRide(ride.rideId).shareUrl}"
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (_: Exception) {
+                            "I'm in a Rida ${ride.option}: ${ride.pickup} → ${ride.destination}."
+                        }
+                        context.startActivity(
+                            Intent.createChooser(
+                                Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, text)
+                                },
+                                "Share trip"
+                            )
+                        )
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        Toast.makeText(context, "Unable to open trip sharing.", Toast.LENGTH_SHORT).show()
+                    } finally {
+                        isSharing = false
+                    }
+                }
+            }
+        },
+        onPrimary = {
+            when {
+                ui.activeRide != null -> {
+                    RideRepository.cancelRide()
+                    RideRepository.selectHistory(null)
+                }
+                ui.isReceipt -> {
+                    RideRepository.consumeCompleted()
+                    RideRepository.selectHistory(null)
+                    RideRepository.requestRide(ui.pickup, ui.destination, ui.price, ui.title)
+                }
+                ui.historyItem != null -> {
+                    RideRepository.selectHistory(null)
+                    RideRepository.clearRoute()
+                    RideRepository.requestRide(ui.pickup, ui.destination, ui.price, ui.title)
+                }
+            }
+            onCancel()
+        },
+        onSecondary = {
+            if (ui.isReceipt) RideRepository.consumeCompleted()
+            RideRepository.selectHistory(null)
+            onCancel()
+        },
+        mapContent = { modifier ->
+            RidaMapView(
+                modifier = modifier,
+                center = mapCenter,
+                zoom = if ((visibleSnapshot?.distanceM ?: 9999.0) < 3000) 15.0 else 13.5,
+                useGoogleTiles = false,
+                useSatellite = false,
+                useDarkTiles = false,
+                currentLocation = visibleSnapshot?.origin,
+                destination = visibleSnapshot?.destination ?: historyDestination,
+                routePoints = visibleSnapshot?.points.orEmpty(),
+                driverLocations = listOfNotNull(driverPin.takeIf { ui.activeRide != null })
+            )
+        }
+    )
+}
+
+@Composable
+private fun RideDetailsScreenContent(
+    ui: RideDetailsUiState,
+    canContactDriver: Boolean = false,
+    isSharing: Boolean = false,
+    onBack: () -> Unit = {},
+    onCall: () -> Unit = {},
+    onMessage: () -> Unit = {},
+    onShare: () -> Unit = {},
+    onPrimary: () -> Unit = {},
+    onSecondary: () -> Unit = {},
+    mapContent: @Composable (Modifier) -> Unit = { RidaMapView(modifier = it, useGoogleTiles = false) }
+) {
+    Column(
+        modifier = Modifier.fillMaxSize().background(HelpPageBg).statusBarsPadding(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()
+                .padding(start = 12.dp, end = 20.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
+            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+                RidaIcon(RidaIcons.Back, "Back", Modifier.size(24.dp), HelpTitleText)
+            }
+            Text(
+                text = "Ride details",
+                style = MaterialTheme.typography.displaySmall,
+                color = HelpTitleText,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        LazyColumn(
+            modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth().weight(1f),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            if (ui.isEmpty) {
+                item(key = "empty") {
+                    RideEmptyState(Modifier.fillParentMaxSize())
+                }
+            } else {
+                item(key = "map") {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color.White,
+                        border = BorderStroke(1.dp, HelpCardBorder)
+                    ) {
+                        BoxWithConstraints(Modifier.fillMaxWidth()) {
+                            mapContent(Modifier.fillMaxWidth().height((maxWidth * 0.55f).coerceIn(140.dp, 220.dp)))
+                        }
+                    }
+                }
+                item(key = "summary") { RideSummary(ui) }
+                val driver = ui.activeRide?.driver
+                if (driver != null) {
+                    item(key = "driver") {
+                        RideSection("Your driver") {
+                            RideDriverCard(driver, canContactDriver, isSharing, onCall, onMessage, onShare)
+                        }
+                    }
+                }
+                item(key = "route") {
+                    RideSection("Your route") {
+                        RideCard {
+                            Column(Modifier.padding(16.dp)) {
+                                RideStop("Pickup", ui.pickup, RidaIcons.Pickup, HelpGreen, connect = true)
+                                RideStop("Drop-off", ui.destination, RidaIcons.SavedPlace, HelpTitleText)
+                            }
+                        }
+                    }
+                }
+                if (ui.isShared) {
+                    item(key = "sharing") {
+                        RideNotice(
+                            icon = RidaIcons.Leaf,
+                            title = if (ui.activeRide != null) "You're sharing this ride" else "Shared ride",
+                            subtitle = if (ui.activeRide != null) {
+                                "Good for your wallet. Better for the planet."
+                            } else {
+                                "This booking used a shared ride option."
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        RideDetailsActions(ui, onPrimary, onSecondary)
+    }
+}
+
+@Composable
+private fun RideCard(content: @Composable () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = Color.White,
+        border = BorderStroke(1.dp, HelpCardBorder),
+        content = content
+    )
+}
+
+@Composable
+private fun RideSection(title: String, content: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = HelpTitleText,
+            modifier = Modifier.padding(horizontal = 4.dp)
+        )
+        content()
+    }
+}
+
+@Composable
+private fun RideSummary(ui: RideDetailsUiState) {
+    RideCard {
+        Column {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable(onClick = onBack),
-                    contentAlignment = Alignment.CenterStart
+                    modifier = Modifier.size(48.dp).clip(CircleShape).background(HelpGreen.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "‹", color = Color(0xFF111827), fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    RidaIcon(RidaIcons.Rides, null, Modifier.size(24.dp), HelpGreen)
                 }
-                Text(text = "Ride Details", color = Color(0xFF111827), fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.size(32.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(ui.title, style = MaterialTheme.typography.headlineSmall, color = HelpTitleText)
+                    val subtitle = ui.historyItem?.let {
+                        listOf(it.date, it.people).filter { value -> value.isNotBlank() && value != "—" }
+                            .joinToString(" • ")
+                    } ?: if (ui.isShared) "Shared ride" else "Your current ride"
+                    if (subtitle.isNotBlank()) {
+                        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = HelpMutedText)
+                    }
+                }
+            }
+
+            RideStatus(ui)
+            HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = HelpCardBorder)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                RideMetric(ui.price, if (ui.activeRide != null) "Fare" else "Total fare", Modifier.weight(1f))
+                ui.activeRide?.etaMin?.takeIf { it > 0 }?.let { eta ->
+                    VerticalDivider(Modifier.height(36.dp).align(Alignment.CenterVertically), color = HelpCardBorder)
+                    RideMetric("$eta min", "ETA", Modifier.weight(1f))
+                }
             }
         }
+    }
+}
 
-        // Bottom sheet
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-                .background(SheetBg)
-                .border(1.dp, SheetBorder, RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
+@Composable
+private fun RideMetric(value: String, label: String, modifier: Modifier = Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = HelpTitleText,
+            textAlign = TextAlign.Center
+        )
+        Text(label, style = MaterialTheme.typography.labelMedium, color = HelpMutedText, textAlign = TextAlign.Center)
+    }
+}
+
+@Composable
+private fun RideStatus(ui: RideDetailsUiState) {
+    val ride = ui.activeRide
+    val phase = ride?.phase
+    val status = ui.historyItem?.rideStatus?.lowercase()
+    val title: String
+    val subtitle: String
+    var icon = RidaIcons.Navigation
+    var isError = false
+    when {
+        phase == RidePhase.SEARCHING -> {
+            title = "Finding your driver…"
+            subtitle = "Your driver's details will appear here."
+        }
+        phase == RidePhase.DRIVER_FOUND -> {
+            title = "Your driver is on the way"
+            subtitle = listOfNotNull(
+                ride?.driver?.plate,
+                "Heading to ${ui.pickup}"
+            ).filter { it.isNotBlank() && it != "—" }.joinToString(" • ")
+        }
+        phase == RidePhase.ARRIVING -> {
+            title = "Driver arriving now"
+            subtitle = "Meet at ${ui.pickup}"
+            icon = RidaIcons.Pickup
+        }
+        phase == RidePhase.IN_TRIP -> {
+            title = "You're on your way"
+            subtitle = "Heading to ${ui.destination}"
+            icon = RidaIcons.Route
+        }
+        ui.isReceipt || status == "completed" || status == "finished" -> {
+            title = "Trip completed"
+            subtitle = "Saved to Activity. Asante for riding Rida!"
+            icon = RidaIcons.Check
+        }
+        status == "cancelled" || status == "canceled" -> {
+            title = "Ride cancelled"
+            subtitle = "This ride was cancelled."
+            icon = RidaIcons.Close
+            isError = true
+        }
+        status == "failed" || status == "expired" -> {
+            title = "Ride not completed"
+            subtitle = "This ride did not complete."
+            icon = RidaIcons.Info
+            isError = true
+        }
+        else -> return
+    }
+    Box(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
+        RideNotice(icon, title, subtitle, loading = phase == RidePhase.SEARCHING, isError = isError)
+    }
+}
+
+@Composable
+private fun RideNotice(icon: Int, title: String, subtitle: String, loading: Boolean = false, isError: Boolean = false) {
+    val accent = if (isError) RideError else HelpGreen
+    Surface(
+        modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+        shape = RoundedCornerShape(14.dp),
+        color = if (isError) RideError.copy(alpha = 0.05f) else Color(0xFFEEF5F2),
+        border = BorderStroke(1.dp, if (isError) RideError.copy(alpha = 0.2f) else HelpCardBorder)
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
-                // Header
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFEEF5F2))
-                            .border(1.dp, Color(0xFFDCE8E3), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        RidaIcon(RidaIcons.Rides, contentDescription = null, modifier = Modifier.size(24.dp), tint = MintRoute)
-                    }
-                    Column {
-                        Text(text = showTitle, color = Color(0xFF111827), fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                        val activeDriver = liveRide?.driver
-                        if (activeDriver != null) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(text = activeDriver.name, color = Color(0xFF667085), fontSize = 12.sp)
-                                RidaIcon(RidaIcons.Star, contentDescription = null, modifier = Modifier.size(14.dp), tint = MintRoute)
-                                Text(text = "${activeDriver.rating} • ${activeDriver.car}", color = Color(0xFF667085), fontSize = 12.sp)
-                            }
-                        } else {
-                            Text(text = showSubtitle, color = Color(0xFF667085), fontSize = 12.sp)
+            if (loading) {
+                CircularProgressIndicator(Modifier.size(24.dp), color = accent, strokeWidth = 2.dp)
+            } else {
+                RidaIcon(icon, null, Modifier.size(24.dp), accent)
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = HelpTitleText)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = HelpMutedText)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RideDriverCard(
+    driver: RideDriverInfo,
+    canContactDriver: Boolean,
+    isSharing: Boolean,
+    onCall: () -> Unit,
+    onMessage: () -> Unit,
+    onShare: () -> Unit
+) {
+    RideCard {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                RidaIcon(RidaIcons.Account, null, Modifier.size(32.dp), HelpGreen)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = driver.name.ifBlank { "Your driver" },
+                        style = MaterialTheme.typography.titleMedium,
+                        color = HelpTitleText,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    val vehicle = listOf(driver.car, driver.plate).filter { it.isNotBlank() && it != "—" }
+                        .joinToString(" • ").ifBlank { "Vehicle details pending" }
+                    Text(vehicle, style = MaterialTheme.typography.bodySmall, color = HelpMutedText)
+                    driver.rating?.takeIf { it > 0 }?.let { rating ->
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            RidaIcon(RidaIcons.Star, null, Modifier.size(14.dp), HelpGreen)
+                            Text(rating.toString(), style = MaterialTheme.typography.labelMedium, color = HelpMutedText)
                         }
                     }
                 }
+            }
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                DriverAction("Call", RidaIcons.Phone, canContactDriver, Modifier.weight(1f).fillMaxHeight(), onClick = onCall)
+                DriverAction("Message", RidaIcons.Chat, canContactDriver, Modifier.weight(1f).fillMaxHeight(), onClick = onMessage)
+                DriverAction("Share", RidaIcons.Share, !isSharing, Modifier.weight(1f).fillMaxHeight(), isSharing, onShare)
+            }
+        }
+    }
+}
 
-                // Live phase banner — the trip's heartbeat. Actions fast-forward the engine.
-                val phase = liveRide?.phase
-                if (phase != null) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    when (phase) {
-                        RidePhase.SEARCHING -> {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-                                    .background(Color(0xFFFAFCFB)).border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(14.dp))
-                                    .padding(13.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 3.dp, color = MintRoute)
-                                Column {
-                                    Text(text = "Finding your driver…", color = Color(0xFF111827), fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
-                                    Text(text = "Usually under a minute", color = Color(0xFF667085), fontSize = 11.5.sp)
-                                }
-                            }
-                        }
-                        RidePhase.DRIVER_FOUND -> {
-                            PhaseBanner(
-                                dot = MintDot,
-                                title = "Driver found — heading to pickup",
-                                subtitle = liveRide?.driver?.let { "${it.plate} • arriving in ~${liveRide?.etaMin} min" } ?: ""
-                            )
-                        }
-                        RidePhase.ARRIVING -> {
-                            PhaseBanner(
-                                dot = MintDot,
-                                title = "Driver arriving now",
-                                subtitle = "Meet at $pickupLabel • ${liveRide?.driver?.plate ?: ""}"
-                            )
-                        }
-                        RidePhase.IN_TRIP -> {
-                            PhaseBanner(
-                                dot = MintRoute,
-                                title = "You're on your way",
-                                subtitle = "Heading to $dropoffLabel"
-                            )
-                        }
-                        else -> Unit
-                    }
+@Composable
+private fun DriverAction(
+    label: String,
+    icon: Int,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+    loading: Boolean = false,
+    onClick: () -> Unit
+) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.heightIn(min = 64.dp),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, HelpCardBorder),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = Color.White,
+            contentColor = HelpTitleText,
+            disabledContentColor = HelpMutedText.copy(alpha = 0.6f)
+        ),
+        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 10.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxHeight(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            if (loading) CircularProgressIndicator(Modifier.size(20.dp), color = HelpGreen, strokeWidth = 2.dp)
+            else RidaIcon(icon, null, Modifier.size(20.dp))
+            Text(label, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center)
+        }
+    }
+}
+
+@Composable
+private fun RideStop(label: String, address: String, icon: Int, tint: Color, connect: Boolean = false) {
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.width(24.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+            RidaIcon(icon, null, Modifier.size(24.dp), tint)
+            if (connect) Box(Modifier.padding(top = 6.dp).width(1.dp).weight(1f).background(HelpCardBorder))
+        }
+        Column(
+            modifier = Modifier.weight(1f).padding(bottom = if (connect) 20.dp else 0.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = HelpMutedText)
+            Text(address, style = MaterialTheme.typography.titleSmall, color = HelpTitleText)
+        }
+    }
+}
+
+@Composable
+private fun RideDetailsActions(ui: RideDetailsUiState, onPrimary: () -> Unit, onSecondary: () -> Unit) {
+    Surface(color = HelpPageBg) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            HorizontalDivider(color = HelpCardBorder)
+            Column(
+                modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth().navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                val buttonModifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                val label = when {
+                    ui.activeRide != null -> "Cancel ride"
+                    ui.isReceipt -> "Ride again • ${ui.price}"
+                    ui.historyItem != null -> "Book again • ${ui.price}"
+                    else -> "Find a ride"
                 }
-
-                // Receipt banner for a just-finished trip.
-                if (receipt != null) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-                            .background(Color(0xFFECFDF5)).border(1.dp, Color(0xFFA7F3D0), RoundedCornerShape(14.dp))
-                            .padding(13.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                if (ui.activeRide != null) {
+                    OutlinedButton(
+                        onClick = onPrimary,
+                        modifier = buttonModifier,
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, HelpCardBorder),
+                        colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White, contentColor = RideError),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
                     ) {
-                        Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(MintRoute), contentAlignment = Alignment.Center) {
-                            RidaIcon(RidaIcons.Check, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color.White)
-                        }
-                        Column {
-                            Text(text = "Trip completed • $showPrice", color = Color(0xFF065F46), fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
-                            Text(text = "Saved to Activity. Asante for riding Rida!", color = Color(0xFF047857), fontSize = 11.5.sp)
-                        }
-                    }
-                }
-
-                // Driver actions — call / message / share when a live driver exists
-                if (liveRide?.driver != null) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Box(
-                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFFFAFCFB)).border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(12.dp))
-                                .clickable {
-                                    val tel = driverPhone?.takeIf { it.length >= 9 } ?: return@clickable
-                                    try { context.startActivity(android.content.Intent(android.content.Intent.ACTION_DIAL, "tel:$tel".toUri())) }
-                                    catch (_: Exception) { android.widget.Toast.makeText(context, "Calling driver…", android.widget.Toast.LENGTH_SHORT).show() }
-                                }.padding(vertical = 11.dp),
-                            contentAlignment = Alignment.Center
-                        ) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) { RidaIcon(RidaIcons.Phone, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color(0xFF111827)); Text(text = "Call", color = Color(0xFF111827), fontSize = 13.sp, fontWeight = FontWeight.SemiBold) } }
-                        Box(
-                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFFFAFCFB)).border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(12.dp))
-                                .clickable {
-                                    val tel = driverPhone?.takeIf { it.length >= 9 } ?: return@clickable
-                                    try { context.startActivity(android.content.Intent(android.content.Intent.ACTION_SENDTO, "smsto:$tel".toUri())) }
-                                    catch (_: Exception) { android.widget.Toast.makeText(context, "Messaging driver…", android.widget.Toast.LENGTH_SHORT).show() }
-                                }.padding(vertical = 11.dp),
-                            contentAlignment = Alignment.Center
-                        ) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) { RidaIcon(RidaIcons.Chat, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color(0xFF111827)); Text(text = "Message", color = Color(0xFF111827), fontSize = 13.sp, fontWeight = FontWeight.SemiBold) } }
-                        Box(
-                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFFFAFCFB)).border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(12.dp))
-                                .clickable {
-                                    val rideId = liveRide?.rideId
-                                    scope.launch {
-                                        val text = if (rideId != null) {
-                                            try {
-                                                val link = RidaApiClient.api.shareRide(rideId).shareUrl
-                                                "Track my Rida trip: $link"
-                                            } catch (_: Exception) {
-                                                val r = liveRide
-                                                "I'm in a Rida ${r?.option}: ${r?.pickup} → ${r?.destination}."
-                                            }
-                                        } else {
-                                            "My Rida trip."
-                                        }
-                                        try {
-                                            context.startActivity(
-                                                android.content.Intent.createChooser(
-                                                    android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                                        type = "text/plain"
-                                                        putExtra(android.content.Intent.EXTRA_TEXT, text)
-                                                    },
-                                                    "Share trip"
-                                                )
-                                            )
-                                        } catch (_: Exception) { }
-                                    }
-                                }.padding(vertical = 11.dp),
-                            contentAlignment = Alignment.Center
-                        ) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) { RidaIcon(RidaIcons.Share, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color(0xFF111827)); Text(text = "Share", color = Color(0xFF111827), fontSize = 13.sp, fontWeight = FontWeight.SemiBold) } }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFE8EFF0)))
-
-                Spacer(modifier = Modifier.height(14.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            RidaIcon(RidaIcons.Pending, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color(0xFF667085))
-                            Text(text = showEta, color = Color(0xFF111827), fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        }
-                        Text(text = if (liveRide != null) "Pickup time" else "Duration", color = Color(0xFF667085), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
-                    }
-                    Column {
-                        Text(text = showPrice, color = Color(0xFF111827), fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text(text = "Total fare", color = Color(0xFF667085), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
-                    }
-                    val active = liveRide
-                    if (active != null && active.option.contains("share", ignoreCase = true)) {
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                RidaIcon(RidaIcons.Users, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color(0xFF667085))
-                                Text(text = "Shared", color = Color(0xFF111827), fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            }
-                            Text(text = "Ride type", color = Color(0xFF667085), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                // Stops — live pickup/destination or the tapped history route
-                Column {
-                    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(top = 4.dp)) {
-                            Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(MintDot))
-                            Box(modifier = Modifier.width(1.dp).height(36.dp).background(Color(0xFFDCE8E3)))
-                        }
-                        Column {
-                            Text(text = pickupLabel, color = Color(0xFF111827), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                            Text(text = "Pickup (exact location)", color = Color(0xFF667085), fontSize = 12.sp)
-                        }
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Box(modifier = Modifier.size(10.dp).clip(CircleShape).border(2.dp, Color(0xFF111827), CircleShape))
-                        Column {
-                            Text(text = dropoffLabel, color = Color(0xFF111827), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                            Text(text = "Drop-off (approx.)", color = Color(0xFF667085), fontSize = 12.sp)
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Banner
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFFEEF5F2))
-                        .border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(16.dp))
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(MintRoute.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        RidaIcon(RidaIcons.Leaf, contentDescription = null, modifier = Modifier.size(20.dp), tint = MintDot)
-                    }
-                    Column {
-                        Text(text = "You're sharing this ride", color = Color(0xFF111827), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        Text(text = "Good for your wallet. Better for the planet.", color = Color(0xFF667085), fontSize = 11.sp)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                if (liveRide != null) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFFAFCFB))
-                            .border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(12.dp))
-                            .clickable(onClick = { RideRepository.cancelRide(); RideRepository.selectHistory(null); onCancel() }),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = "Cancel Ride", color = Color(0xFFD92D20), fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    }
-                } else if (receipt != null) {
-                    // Receipt: ride again re-requests the same route, Done files it away.
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MintRoute)
-                            .clickable(onClick = {
-                                RideRepository.consumeCompleted()
-                                RideRepository.selectHistory(null)
-                                RideRepository.requestRide(pickupLabel, dropoffLabel, showPrice, showTitle, 10)
-                                onCancel()
-                            }),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = "Ride again • $showPrice", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFFAFCFB))
-                            .border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(12.dp))
-                            .clickable(onClick = { RideRepository.consumeCompleted(); RideRepository.selectHistory(null); onCancel() }),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = "Done", color = Color(0xFF111827), fontWeight = FontWeight.Medium, fontSize = 14.sp)
-                    }
-                } else if (selected != null) {
-                    // History view: Book again re-requests the same route, Close clears selection.
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MintRoute)
-                            .clickable(onClick = {
-                                RideRepository.selectHistory(null)
-                                RideRepository.clearRoute()
-                                RideRepository.requestRide(pickupLabel, dropoffLabel, showPrice, showTitle, 10)
-                                onCancel()
-                            }),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = "Book again • $showPrice", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFFAFCFB))
-                            .border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(12.dp))
-                            .clickable(onClick = { RideRepository.selectHistory(null); onCancel() }),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = "Close", color = Color(0xFF111827), fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                        Text(label, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
                     }
                 } else {
-                    // Empty: no live ride, no receipt, no history selection.
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MintRoute)
-                            .clickable(onClick = { onCancel() }),
-                        contentAlignment = Alignment.Center
+                    Button(
+                        onClick = onPrimary,
+                        modifier = buttonModifier,
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = HelpGreen, contentColor = Color.White),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
                     ) {
-                        Text(text = "Find a ride", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(label, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
                     }
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
-                Box(modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                    HomeIndicator(color = Color(0xFF111827).copy(alpha = 0.2f))
+                if (ui.historyItem != null) {
+                    TextButton(
+                        onClick = onSecondary,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        colors = ButtonDefaults.textButtonColors(contentColor = HelpTitleText)
+                    ) {
+                        Text(if (ui.isReceipt) "Done" else "Close", style = MaterialTheme.typography.labelLarge)
+                    }
                 }
             }
         }
@@ -481,26 +572,41 @@ fun RideDetailsScreen(
 }
 
 @Composable
-private fun PhaseBanner(dot: Color, title: String, subtitle: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-            .background(Color(0xFFEEF5F2)).border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(14.dp))
-            .padding(13.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+private fun RideEmptyState(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.padding(vertical = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(dot))
-        Column {
-            Text(text = title, color = Color(0xFF111827), fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
-            if (subtitle.isNotBlank()) Text(text = subtitle, color = Color(0xFF667085), fontSize = 11.5.sp)
-        }
+        RidaIcon(RidaIcons.Rides, null, Modifier.size(40.dp), HelpGreen)
+        Text("No ride selected", style = MaterialTheme.typography.headlineSmall, color = HelpTitleText)
+        Text(
+            text = "Your active ride or a trip from Activity will appear here.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = HelpMutedText,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
-@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Preview(name = "No selected ride", showBackground = true, widthDp = 390, heightDp = 844)
 @Composable
 fun RideDetailsScreenPreview() {
-    RIDEPASSENGER2Theme {
-        RideDetailsScreen()
+    RidaLightTheme {
+        RideDetailsScreenContent(RideDetailsUiState())
     }
+}
+
+@Preview(name = "Small screen, large text", showBackground = true, widthDp = 320, heightDp = 640, fontScale = 1.3f)
+@Composable
+private fun SmallRideDetailsPreview() {
+    RidaLightTheme {
+        RideDetailsScreenContent(RideDetailsUiState())
+    }
+}
+
+@Preview(name = "No selected ride", showBackground = true, widthDp = 360, heightDp = 720)
+@Composable
+private fun EmptyRideDetailsPreview() {
+    RidaLightTheme { RideDetailsScreenContent(RideDetailsUiState()) }
 }

@@ -1,40 +1,30 @@
 package com.example.ridepassenger2.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.ridepassenger2.data.repository.RideRepository
 import com.example.ridepassenger2.ui.components.RidaIcon
 import com.example.ridepassenger2.ui.components.RidaIcons
-import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
-
-// Dark palette — locked to the home screen
-private val ActPageBg = Color(0xFF0A0F14)
-private val ActCardBg = Color(0xFF181F26)
-private val ActBorder = Color(0xFF26313B)
-private val ActPill = Color(0xFF1C252D)
-private val ActTitle = Color.White
-private val ActBody = Color(0xFFF3F4F6)
-private val ActMuted = Color(0xFF9CA3AF)
-private val ActFaint = Color(0xFF6B7884)
-private val ActMint = Color(0xFF43D2A1)
-private val ActMintBtn = Color(0xFF35C48E)
-private val ActOnMint = Color(0xFF0C1014)
+import com.example.ridepassenger2.ui.theme.RidaLightTheme
 
 data class RideHistoryItem(
     val rideId: String? = null,
@@ -48,188 +38,265 @@ data class RideHistoryItem(
 )
 
 @Composable
-fun RideHistoryScreen(
-    onRideClick: (RideHistoryItem) -> Unit = {}
-) {
-    // Back-compat constructor — old callers may still pass onHome/onHistory/onProfile.
-    // We keep overload below.
-    RideHistoryScreenInternal(onRideClick = onRideClick)
-}
-
-@Composable
-private fun RideHistoryScreenInternal(
-    onRideClick: (RideHistoryItem) -> Unit = {}
-) {
-    var filter by remember { mutableStateOf("All") }
-    val items by RideRepository.history.collectAsState()
+fun RideHistoryScreen(onRideClick: (RideHistoryItem) -> Unit = {}) {
+    var filter by rememberSaveable { mutableStateOf("All") }
+    val rides by RideRepository.history.collectAsState()
     val loading by RideRepository.historyLoading.collectAsState()
     val loadError by RideRepository.historyError.collectAsState()
 
     LaunchedEffect(Unit) { RideRepository.refreshHistory() }
 
-    // NOTE: Bottom bar is now provided by AppNavGraph Scaffold — do not duplicate here.
-    // This screen is the "Activity" tab.
+    RideHistoryScreenContent(
+        rides = rides,
+        filter = filter,
+        loading = loading,
+        hasError = loadError != null,
+        onFilter = { filter = it },
+        onRetry = { RideRepository.refreshHistory() },
+        onRideClick = onRideClick
+    )
+}
+
+@Composable
+private fun RideHistoryScreenContent(
+    rides: List<RideHistoryItem>,
+    filter: String = "All",
+    loading: Boolean = false,
+    hasError: Boolean = false,
+    onFilter: (String) -> Unit = {},
+    onRetry: () -> Unit = {},
+    onRideClick: (RideHistoryItem) -> Unit = {}
+) {
+    val visible = when (filter) {
+        "Shared" -> rides.filter { it.isShared }
+        "Completed" -> rides.filter {
+            it.rideStatus.equals("completed", ignoreCase = true) || it.rideStatus.equals("finished", ignoreCase = true)
+        }
+        else -> rides
+    }
+
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(ActPageBg)
-            .statusBarsPadding()
-            .padding(horizontal = 20.dp)
+        modifier = Modifier.fillMaxSize().background(HelpPageBg).statusBarsPadding().navigationBarsPadding(),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(6.dp))
-        // Logo row
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                repeat(2) {
-                    Box(modifier = Modifier.width(4.dp).height(14.dp).clip(RoundedCornerShape(4.dp)).background(ActMint))
-                }
-            }
-            Text(text = "Rida", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = ActTitle)
+        Column(
+            modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text("Activity", style = MaterialTheme.typography.displaySmall, color = HelpTitleText)
+            Text("Your past rides and shared journeys.", style = MaterialTheme.typography.bodyMedium, color = HelpMutedText)
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(text = "Activity", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = ActTitle)
-        Text(text = "Your past rides and shared journeys.", fontSize = 12.sp, color = ActMuted)
-        Spacer(modifier = Modifier.height(14.dp))
-        // Filter chips — green family, like home
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("All", "Completed", "Shared").forEach { tab ->
-                val sel = filter == tab
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(if (sel) ActMintBtn else ActPill)
-                        .border(1.dp, if (sel) ActMintBtn else ActMint.copy(alpha = 0.35f), RoundedCornerShape(999.dp))
-                        .clickable { filter = tab }
-                        .padding(horizontal = 16.dp, vertical = 7.dp)
-                ) {
-                    Text(text = tab, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (sel) ActOnMint else ActMint)
-                }
+
+        Row(
+            modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()
+                .horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf("All", "Completed", "Shared").forEach { option ->
+                FilterChip(
+                    selected = filter == option,
+                    onClick = { onFilter(option) },
+                    label = { Text(option, style = MaterialTheme.typography.labelLarge) },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(50),
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = Color.White,
+                        labelColor = HelpMutedText,
+                        selectedContainerColor = HelpGreen,
+                        selectedLabelColor = Color.White
+                    ),
+                    border = BorderStroke(1.dp, if (filter == option) HelpGreen else HelpCardBorder)
+                )
             }
         }
-        Spacer(modifier = Modifier.height(12.dp))
 
         LazyColumn(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth().weight(1f),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            val visible = when (filter) {
-                "Shared" -> items.filter { it.isShared }
-                "Completed" -> items.filter {
-                    it.rideStatus in setOf("completed", "finished")
-                }
-                else -> items
-            }
-            if (loadError != null) {
-                item {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-                            .background(ActCardBg).border(1.dp, ActBorder, RoundedCornerShape(16.dp))
-                            .padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(text = "Something went wrong", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = ActTitle)
-                        Text(text = loadError ?: "", fontSize = 12.sp, color = ActMuted)
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Box(
-                            modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(ActMintBtn)
-                                .clickable { RideRepository.refreshHistory() }
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        ) {
-                            Text(text = "Try again", fontSize = 12.sp, color = ActOnMint, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-                }
-            } else if (loading && items.isEmpty()) {
-                item {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(text = "Loading your rides…", fontSize = 13.sp, color = ActMuted)
-                    }
-                }
-            } else if (visible.isEmpty()) {
-                item {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-                            .background(ActCardBg).border(1.dp, ActBorder, RoundedCornerShape(16.dp))
-                            .padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        RidaIcon(RidaIcons.Rides, contentDescription = null, modifier = Modifier.size(32.dp), tint = ActMint)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(text = "No ${filter.lowercase()} rides yet", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = ActTitle)
-                        Text(text = "Request a ride from Home and it lands here.", fontSize = 12.sp, color = ActMuted)
-                    }
+            if (hasError) {
+                item(key = "error") {
+                    HistoryMessage(
+                        icon = RidaIcons.Warning,
+                        title = "Couldn't load your rides",
+                        message = "Check your connection and try again.",
+                        onRetry = onRetry
+                    )
                 }
             }
-            items(visible) { item ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(ActCardBg)
-                        .border(1.dp, ActBorder, RoundedCornerShape(16.dp))
-                        .clickable { onRideClick(item) }
-                        .padding(14.dp),
-                    verticalAlignment = Alignment.Top,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(ActPill)
-                            .border(1.dp, ActBorder, CircleShape),
-                        contentAlignment = Alignment.Center
+            if (loading && rides.isEmpty()) {
+                item(key = "loading") {
+                    Column(
+                        modifier = Modifier.fillParentMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        RidaIcon(RidaIcons.Rides, contentDescription = null, modifier = Modifier.size(20.dp), tint = ActMint)
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = item.route, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ActTitle, modifier = Modifier.weight(1f))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(999.dp))
-                                    .background(ActMint.copy(alpha = 0.14f))
-                                    .border(1.dp, ActMint.copy(alpha = 0.25f), RoundedCornerShape(999.dp))
-                                    .padding(horizontal = 8.dp, vertical = 3.dp)
-                            ) {
-                                Text(text = "Completed", fontSize = 10.sp, color = ActMint, fontWeight = FontWeight.SemiBold)
-                            }
-                        }
-                        Text(text = item.date, fontSize = 11.sp, color = ActMuted, modifier = Modifier.padding(top = 3.dp))
-                        Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                                Box(modifier = Modifier.size(22.dp).clip(CircleShape).background(ActPill), contentAlignment = Alignment.Center) {
-                                    RidaIcon(RidaIcons.Account, contentDescription = null, modifier = Modifier.size(14.dp), tint = ActMuted)
-                                }
-                                Text(text = item.people, fontSize = 11.sp, color = ActMuted)
-                            }
-                            Text(text = item.price, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ActTitle)
-                        }
+                        CircularProgressIndicator(Modifier.size(28.dp), color = HelpGreen, strokeWidth = 2.dp)
+                        Text("Loading your rides…", style = MaterialTheme.typography.bodyMedium, color = HelpMutedText)
                     }
                 }
+            } else if (visible.isEmpty() && !hasError) {
+                item(key = "empty") {
+                    val title = when (filter) {
+                        "Completed" -> "No completed rides yet"
+                        "Shared" -> "No shared rides yet"
+                        else -> "No rides yet"
+                    }
+                    HistoryMessage(
+                        icon = RidaIcons.Rides,
+                        title = title,
+                        message = if (filter == "All") {
+                            "Take your first ride from Home. Your trips will appear here."
+                        } else {
+                            "Rides that match this filter will appear here."
+                        }
+                    )
+                }
+            } else {
+                itemsIndexed(visible, key = { index, ride -> ride.rideId ?: "history-$index" }) { _, ride ->
+                    RideHistoryCard(ride, onClick = { onRideClick(ride) })
+                }
             }
-            item { Spacer(modifier = Modifier.height(16.dp)) }
         }
     }
 }
 
-// Deprecated overload for any legacy call sites still using bottom-bar callbacks (onHistory alias)
 @Composable
-fun RideHistoryScreen(
-    onHome: () -> Unit,
-    onHistory: () -> Unit,
-    onProfile: () -> Unit,
-    onRideClick: (RideHistoryItem) -> Unit = {}
-) = RideHistoryScreenInternal(onRideClick = onRideClick)
+private fun RideHistoryCard(ride: RideHistoryItem, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().semantics { role = Role.Button },
+        shape = RoundedCornerShape(20.dp),
+        color = Color.White,
+        border = BorderStroke(1.dp, HelpCardBorder)
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                RidaIcon(RidaIcons.Rides, null, Modifier.size(24.dp), HelpGreen)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        ride.seatsShared.ifBlank { "Ride" },
+                        style = MaterialTheme.typography.titleMedium,
+                        color = HelpTitleText
+                    )
+                    Text(
+                        listOf(ride.date, if (ride.isShared) "Shared ride" else "")
+                            .filter { it.isNotBlank() }.joinToString(" • "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = HelpMutedText
+                    )
+                }
+                RidaIcon(RidaIcons.ChevronRight, null, Modifier.size(18.dp), HelpMutedText)
+            }
 
-@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+            val stops = ride.route.split("→", limit = 2).map { it.trim() }
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                HistoryRouteStop(RidaIcons.Pickup, stops.firstOrNull()?.ifBlank { "Pickup unavailable" }.orEmpty())
+                stops.getOrNull(1)?.let {
+                    HistoryRouteStop(RidaIcons.SavedPlace, it.ifBlank { "Drop-off unavailable" })
+                }
+            }
+
+            if (ride.people.isNotBlank() && ride.people != "—") {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    RidaIcon(RidaIcons.Account, null, Modifier.size(18.dp), HelpMutedText)
+                    Text(ride.people, style = MaterialTheme.typography.bodySmall, color = HelpMutedText, modifier = Modifier.weight(1f))
+                }
+            }
+
+            HorizontalDivider(color = HelpCardBorder)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.weight(1f)) {
+                    HistoryStatus(ride.rideStatus)
+                }
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("Fare", style = MaterialTheme.typography.labelMedium, color = HelpMutedText)
+                    Text(
+                        ride.price.ifBlank { "—" },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = HelpTitleText,
+                        textAlign = TextAlign.End
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistoryRouteStop(icon: Int, address: String) {
+    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        RidaIcon(icon, null, Modifier.size(18.dp), HelpGreen)
+        Text(address, style = MaterialTheme.typography.bodyMedium, color = HelpTitleText, modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun HistoryStatus(status: String) {
+    val (label, color) = when {
+        status.equals("completed", true) || status.equals("finished", true) -> "Completed" to HelpGreen
+        status.equals("cancelled", true) || status.equals("canceled", true) -> "Cancelled" to Color(0xFFD92D20)
+        status.equals("failed", true) -> "Not completed" to Color(0xFFD92D20)
+        status.equals("expired", true) -> "Expired" to HelpMutedText
+        else -> "Status unavailable" to HelpMutedText
+    }
+    Surface(shape = RoundedCornerShape(50), color = color.copy(alpha = 0.08f)) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = color,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+        )
+    }
+}
+
+@Composable
+private fun HistoryMessage(icon: Int, title: String, message: String, onRetry: (() -> Unit)? = null) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = Color.White,
+        border = BorderStroke(1.dp, HelpCardBorder)
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            RidaIcon(icon, null, Modifier.size(32.dp), HelpGreen)
+            Text(title, style = MaterialTheme.typography.headlineSmall, color = HelpTitleText, textAlign = TextAlign.Center)
+            Text(message, style = MaterialTheme.typography.bodyMedium, color = HelpMutedText, textAlign = TextAlign.Center)
+            if (onRetry != null) {
+                Button(
+                    onClick = onRetry,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = HelpGreen, contentColor = Color.White)
+                ) {
+                    Text("Try again", style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
+    }
+}
+
+@Preview(name = "Ride history", showBackground = true, widthDp = 390, heightDp = 844)
 @Composable
 fun RideHistoryScreenPreview() {
-    RIDEPASSENGER2Theme {
-        RideHistoryScreen()
-    }
+    RidaLightTheme { RideHistoryScreenContent(emptyList()) }
+}
+
+@Preview(name = "Small screen, large text", showBackground = true, widthDp = 320, heightDp = 640, fontScale = 1.3f)
+@Composable
+private fun SmallRideHistoryPreview() {
+    RidaLightTheme { RideHistoryScreenContent(emptyList()) }
+}
+
+@Preview(name = "No rides", showBackground = true, widthDp = 360, heightDp = 720)
+@Composable
+private fun EmptyRideHistoryPreview() {
+    RidaLightTheme { RideHistoryScreenContent(emptyList()) }
 }

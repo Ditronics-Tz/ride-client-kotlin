@@ -702,7 +702,7 @@ fun PackageRideScreen(onBack: () -> Unit = {}, onSent: () -> Unit = {}) {
                     }
                     if (phoneError != null) return@clickable
                     RideRepository.clearRoute()
-                    RideRepository.requestRide(pickup.ifBlank { "Your location" }, dropoff, price, "Package • $size", 12)
+                    RideRepository.requestRide(pickup.ifBlank { "Your location" }, dropoff, price, "Package • $size")
                     Toast.makeText(context, "Courier requested • $price", Toast.LENGTH_LONG).show()
                     onSent()
                 },

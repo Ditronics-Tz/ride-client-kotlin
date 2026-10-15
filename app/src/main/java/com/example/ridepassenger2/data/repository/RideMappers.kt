@@ -72,14 +72,14 @@ fun driverFromDto(d: DriverInfoDto): RideDriverInfo {
     }.ifBlank { "Vehicle" }
     return RideDriverInfo(
         name = d.name,
-        rating = d.rating ?: 0.0,
+        rating = d.rating,
         car = car,
         plate = d.plateNumber ?: "—",
         phone = d.phone
     )
 }
 
-fun RideResponse.toActiveRide(etaMin: Int, optionLabel: String): ActiveRide {
+fun RideResponse.toActiveRide(optionLabel: String): ActiveRide {
     val fare = finalFare ?: estimatedFare
     return ActiveRide(
         rideId = id,
@@ -88,8 +88,7 @@ fun RideResponse.toActiveRide(etaMin: Int, optionLabel: String): ActiveRide {
         pickup = pickup.address,
         destination = dropoff.address,
         price = formatFareTzs(fare),
-        option = optionLabel.ifBlank { vehicleType ?: "Standard" },
-        etaMin = etaMin
+        option = optionLabel.ifBlank { vehicleType ?: "Standard" }
     )
 }
 

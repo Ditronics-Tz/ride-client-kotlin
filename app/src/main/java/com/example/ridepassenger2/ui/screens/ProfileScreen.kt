@@ -270,8 +270,6 @@ private fun ProfileOverview(session: SessionManager.Session, rideCount: Int, sha
             ) {
                 ProfileStat(rideCount.toString(), "Rides taken", Modifier.weight(1f))
                 VerticalDivider(modifier = Modifier.height(36.dp).align(Alignment.CenterVertically), color = HelpCardBorder)
-                ProfileStat("—", "Rating", Modifier.weight(1f))
-                VerticalDivider(modifier = Modifier.height(36.dp).align(Alignment.CenterVertically), color = HelpCardBorder)
                 ProfileStat(sharedRideCount.toString(), "Rides shared", Modifier.weight(1f))
             }
         }
@@ -355,18 +353,14 @@ private fun ProfileOptionRow(icon: Int, title: String, subtitle: String, onClick
     }
 }
 
-@Preview(name = "Completed profile", showBackground = true, widthDp = 390, heightDp = 760)
+@Preview(name = "Empty profile", showBackground = true, widthDp = 390, heightDp = 760)
 @Composable
 fun ProfileScreenPreview() {
     RidaLightTheme {
         ProfileScreenContent(
-            session = SessionManager.Session(
-                name = "Asha Mwakalinga",
-                email = "asha@example.com",
-                phone = "+255 712 345 678"
-            ),
-            rideCount = 24,
-            sharedRideCount = 6
+            session = SessionManager.Session(),
+            rideCount = 0,
+            sharedRideCount = 0
         )
     }
 }
@@ -375,7 +369,7 @@ fun ProfileScreenPreview() {
 @Composable
 private fun IncompleteProfilePreview() {
     RidaLightTheme {
-        ProfileScreenContent(SessionManager.Session(email = "asha@example.com"), 0, 0)
+        ProfileScreenContent(SessionManager.Session(), 0, 0)
     }
 }
 
@@ -384,13 +378,9 @@ private fun IncompleteProfilePreview() {
 private fun SmallProfilePreview() {
     RidaLightTheme {
         ProfileScreenContent(
-            session = SessionManager.Session(
-                name = "Asha Mwakalinga",
-                email = "asha.mwakalinga@example.com",
-                phone = "+255 712 345 678"
-            ),
-            rideCount = 24,
-            sharedRideCount = 6
+            session = SessionManager.Session(),
+            rideCount = 0,
+            sharedRideCount = 0
         )
     }
 }
