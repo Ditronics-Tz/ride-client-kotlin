@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import android.location.Location
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,19 +25,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ridepassenger2.data.local.AppPrefs
@@ -48,6 +42,8 @@ import com.example.ridepassenger2.data.repository.RideRepository
 import com.example.ridepassenger2.data.remote.MapServiceFactory
 import com.example.ridepassenger2.data.remote.NominatimPlace
 import com.example.ridepassenger2.data.remote.osrmCoords
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.map.RidaMapView
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -282,7 +278,7 @@ fun HomeMapScreen(
                 // Bolt category chips — green family to match the home design.
                 // Active = solid green, inactive = dark with green outline + green text.
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    items(listOf("Ride" to "🚗", "Share" to "👥", "Schedule" to "🕒", "Package" to "📦")) { (label, icon) ->
+                    items(listOf("Ride" to RidaIcons.Rides, "Share" to RidaIcons.Users, "Schedule" to RidaIcons.Calendar, "Package" to RidaIcons.Package)) { (label, icon) ->
                         val active = selectedTab == label
                         Box(
                             modifier = Modifier
@@ -300,7 +296,7 @@ fun HomeMapScreen(
                                 .padding(horizontal = 14.dp, vertical = 8.dp)
                         ) {
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text(text = icon, fontSize = 12.sp)
+                                RidaIcon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = if (active) OnMintDark else Mint)
                                 Text(text = label, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = if (active) OnMintDark else Mint)
                             }
                         }
@@ -311,27 +307,28 @@ fun HomeMapScreen(
                 if (destination == null) {
                     // Saved places — tap uses the saved query, long-press path via manager
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SavedPlaceCard(icon = "⌂", title = "Home", subtitle = savedHome ?: "Set home", modifier = Modifier.weight(1f), onClick = {
+                        SavedPlaceCard(icon = RidaIcons.Home, title = "Home", subtitle = savedHome ?: "Set home", modifier = Modifier.weight(1f), onClick = {
                             val h = savedHome
                             if (h.isNullOrBlank()) onSavedPlaces() else { query = h; searchFocused = true }
                         })
-                        SavedPlaceCard(icon = "💼", title = "Work", subtitle = savedWork ?: "Set work", modifier = Modifier.weight(1f), onClick = {
+                        SavedPlaceCard(icon = RidaIcons.Work, title = "Work", subtitle = savedWork ?: "Set work", modifier = Modifier.weight(1f), onClick = {
                             val w = savedWork
                             if (w.isNullOrBlank()) onSavedPlaces() else { query = w; searchFocused = true }
                         })
                     }
                     Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End) {
                         Text(
-                            text = "Manage →", fontSize = 11.5.sp, color = Mint, fontWeight = FontWeight.SemiBold,
+                            text = "Manage", fontSize = 11.5.sp, color = Mint, fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onSavedPlaces).padding(4.dp)
                         )
+                        RidaIcon(RidaIcons.Forward, contentDescription = null, modifier = Modifier.size(16.dp), tint = Mint)
                     }
                     Spacer(modifier = Modifier.height(10.dp))
 
                     // Recent — live: stored searches + history, Clear actually clears
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(22.dp).clip(CircleShape).background(DarkPill), contentAlignment = Alignment.Center) { Text(text = "🕒", fontSize = 10.sp) }
+                            Box(modifier = Modifier.size(22.dp).clip(CircleShape).background(DarkPill), contentAlignment = Alignment.Center) { RidaIcon(RidaIcons.History, contentDescription = null, modifier = Modifier.size(14.dp), tint = DarkMuted) }
                             Text(text = "Recent", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = DarkTitle)
                         }
                         Text(
@@ -362,12 +359,12 @@ fun HomeMapScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(DarkPill), contentAlignment = Alignment.Center) { Text(text = "🕒", fontSize = 12.sp) }
+                                Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(DarkPill), contentAlignment = Alignment.Center) { RidaIcon(RidaIcons.History, contentDescription = null, modifier = Modifier.size(18.dp), tint = DarkMuted) }
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(text = route, fontSize = 12.5.sp, fontWeight = FontWeight.Medium, color = DarkBody)
                                     Text(text = meta, fontSize = 11.sp, color = DarkMuted)
                                 }
-                                Text(text = "›", color = DarkChevron, fontSize = 16.sp)
+                                RidaIcon(RidaIcons.ChevronRight, contentDescription = null, modifier = Modifier.size(18.dp), tint = DarkChevron)
                             }
                         }
                     }
@@ -386,7 +383,7 @@ fun HomeMapScreen(
                             .padding(12.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(Mint), contentAlignment = Alignment.Center) { Text(text = "→", color = OnMintDark, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                            Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(Mint), contentAlignment = Alignment.Center) { RidaIcon(RidaIcons.Forward, contentDescription = null, modifier = Modifier.size(16.dp), tint = OnMintDark) }
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(text = destinationLabel ?: "Your trip", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = DarkTitle)
                                 Text(text = "$etaText • ${routeDistanceM?.let { "%.1f km".format(it / 1000) } ?: ""} • via OSRM", fontSize = 11.sp, color = DarkMuted)
@@ -416,7 +413,7 @@ fun HomeMapScreen(
                     // Choose a ride
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(22.dp).clip(CircleShape).background(Mint.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) { Text(text = "🚗", fontSize = 11.sp) }
+                            Box(modifier = Modifier.size(22.dp).clip(CircleShape).background(Mint.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) { RidaIcon(RidaIcons.Rides, contentDescription = null, modifier = Modifier.size(16.dp), tint = Mint) }
                             Text(text = "Choose a ride", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = DarkTitle)
                         }
                         Box(modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(DarkPill).padding(horizontal = 8.dp, vertical = 4.dp)) {
@@ -441,7 +438,7 @@ fun HomeMapScreen(
                             .padding(10.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        TrustItem("4.8 ★", "Drivers")
+                        TrustItem("4.8", "Drivers", showRatingStar = true)
                         Box(modifier = Modifier.width(1.dp).height(28.dp).background(DarkBorder))
                         TrustItem("2 min", "Avg pickup")
                         Box(modifier = Modifier.width(1.dp).height(28.dp).background(DarkBorder))
@@ -564,8 +561,8 @@ fun HomeMapScreen(
                                         innerTextField()
                                     }
                                 )
-                                if (query.isNotEmpty()) Box(modifier = Modifier.clip(CircleShape).background(DarkPill).clickable { query = ""; destination = null; destinationLabel = null; routePoints = emptyList(); searchResults = emptyList() }.padding(6.dp)) { Text(text = "✕", fontSize = 10.sp, color = DarkMuted) }
-                                else Box(modifier = Modifier.size(30.dp).clip(CircleShape).background(DarkPill).border(1.dp, DarkBorder, CircleShape).clickable { if (!isPermissionGranted) permissionState?.launchPermissionRequest() else fetchLocation() }, contentAlignment = Alignment.Center) { Text(text = "◎", color = Mint, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                                if (query.isNotEmpty()) Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(DarkPill).clickable { query = ""; destination = null; destinationLabel = null; routePoints = emptyList(); searchResults = emptyList() }, contentAlignment = Alignment.Center) { RidaIcon(RidaIcons.Close, contentDescription = "Clear search", modifier = Modifier.size(18.dp), tint = DarkMuted) }
+                                else Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(DarkPill).border(1.dp, DarkBorder, CircleShape).clickable { if (!isPermissionGranted) permissionState?.launchPermissionRequest() else fetchLocation() }, contentAlignment = Alignment.Center) { RidaIcon(RidaIcons.Locate, contentDescription = "Use current location", modifier = Modifier.size(20.dp), tint = Mint) }
                             }
                         }
                     }
@@ -577,12 +574,12 @@ fun HomeMapScreen(
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Mint)
                                 Text(text = "Searching Nominatim…", fontSize = 12.sp, color = DarkMuted)
                             } else if (searchError) Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(text = "⚠", fontSize = 14.sp)
+                                RidaIcon(RidaIcons.Warning, contentDescription = null, modifier = Modifier.size(18.dp), tint = DarkMuted)
                                 Text(text = "Couldn't search — check your connection and retry", fontSize = 12.sp, color = DarkMuted)
                             } else LazyColumn(modifier = Modifier.heightIn(max = 220.dp)) {
                                 items(searchResults) { place ->
                                     Row(modifier = Modifier.fillMaxWidth().clickable { val gp = GeoPoint(place.lat.toDouble(), place.lon.toDouble()); destination = gp; destinationLabel = place.displayName.substringBefore(","); query = place.displayName.substringBefore(","); searchFocused = false; searchResults = emptyList(); keyboardController?.hide(); scope.launch { com.example.ridepassenger2.data.local.AppPrefs.pushRecent(context, query) } }.padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                        Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(DarkPill), contentAlignment = Alignment.Center) { Text(text = "📍", fontSize = 12.sp) }
+                                        Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(DarkPill), contentAlignment = Alignment.Center) { RidaIcon(RidaIcons.SavedPlace, contentDescription = null, modifier = Modifier.size(16.dp), tint = Mint) }
                                         Column(modifier = Modifier.weight(1f)) { Text(text = place.displayName.substringBefore(","), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = DarkTitle); Text(text = place.displayName, fontSize = 11.sp, color = DarkMuted, maxLines = 1) }
                                     }
                                     if (place != searchResults.last()) Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(DarkDivider))
@@ -611,7 +608,7 @@ fun HomeMapScreen(
                             .border(1.dp, DarkBorder, CircleShape)
                             .clickable(onClick = onSafety),
                         contentAlignment = Alignment.Center
-                    ) { Text(text = "🛡", fontSize = 16.sp) }
+                    ) { RidaIcon(RidaIcons.Safety, contentDescription = "Safety", modifier = Modifier.size(20.dp), tint = Mint) }
                     Box(
                         modifier = Modifier
                             .size(44.dp)
@@ -621,7 +618,7 @@ fun HomeMapScreen(
                             .border(1.dp, DarkBorder, CircleShape)
                             .clickable { if (!isPermissionGranted) permissionState?.launchPermissionRequest() else fetchLocation() },
                         contentAlignment = Alignment.Center
-                    ) { Text(text = "◎", color = Mint, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
+                    ) { RidaIcon(RidaIcons.Locate, contentDescription = "Use current location", modifier = Modifier.size(20.dp), tint = Mint) }
                 }
             }
         }
@@ -668,7 +665,7 @@ fun HomeMapScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Text(text = method, fontSize = 13.5.sp, color = DarkTitle, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        if (sel) Text(text = "✓", color = Mint, fontWeight = FontWeight.Bold)
+                        if (sel) RidaIcon(RidaIcons.Check, contentDescription = null, modifier = Modifier.size(18.dp), tint = Mint)
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                 }
@@ -678,7 +675,7 @@ fun HomeMapScreen(
                         .clickable(onClick = { showPaymentSheet = false; onPayment() })
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
-                ) { Text(text = "Manage payment methods →", color = Mint, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold) }
+                ) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) { Text(text = "Manage payment methods", color = Mint, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold); RidaIcon(RidaIcons.Forward, contentDescription = null, modifier = Modifier.size(16.dp), tint = Mint) } }
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
@@ -695,7 +692,7 @@ private fun SharedRidesSection(onJoin: (ShareRideItem) -> Unit) {
     val rides = emptyList<ShareRideItem>()
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(22.dp).clip(CircleShape).background(Mint.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) { Text(text = "👥", fontSize = 11.sp) }
+            Box(modifier = Modifier.size(22.dp).clip(CircleShape).background(Mint.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) { RidaIcon(RidaIcons.Users, contentDescription = null, modifier = Modifier.size(16.dp), tint = Mint) }
             Text(text = "Shared rides", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = DarkTitle)
         }
         Box(modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(DarkPill).padding(horizontal = 8.dp, vertical = 4.dp)) {
@@ -732,12 +729,12 @@ private fun SharedRidesSection(onJoin: (ShareRideItem) -> Unit) {
                             .border(1.dp, DarkBorder, RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "🚗", fontSize = 18.sp)
+                        RidaIcon(RidaIcons.Rides, contentDescription = null, modifier = Modifier.size(24.dp), tint = Mint)
                     }
                     Column {
                         Text(text = item.time, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = DarkTitle)
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 2.dp)) {
-                            Text(text = "👤", fontSize = 10.sp)
+                            RidaIcon(RidaIcons.Account, contentDescription = null, modifier = Modifier.size(14.dp), tint = DarkMuted)
                             Text(text = "${item.seatsTaken}/3 seats", fontSize = 11.sp, color = DarkMuted)
                         }
                         Text(text = item.price, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = DarkTitle, modifier = Modifier.padding(top = 2.dp))
@@ -802,10 +799,11 @@ private fun RideStatusCard(phase: RidePhase, ride: ActiveRide, onCancel: () -> U
                                 text = if (phase == RidePhase.ARRIVING) "Driver arriving now" else "Driver found!",
                                 fontSize = 14.sp, fontWeight = FontWeight.Bold, color = DarkTitle
                             )
-                            Text(
-                                text = "${ride.driver?.name ?: ""} ★ ${ride.driver?.rating ?: ""}",
-                                fontSize = 12.sp, color = DarkBody, fontWeight = FontWeight.SemiBold
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(text = ride.driver?.name.orEmpty(), fontSize = 12.sp, color = DarkBody, fontWeight = FontWeight.SemiBold)
+                                RidaIcon(RidaIcons.Star, contentDescription = null, modifier = Modifier.size(13.dp), tint = Mint)
+                                Text(text = ride.driver?.rating?.toString().orEmpty(), fontSize = 12.sp, color = DarkBody, fontWeight = FontWeight.SemiBold)
+                            }
                             Text(
                                 text = "${ride.driver?.car ?: ""} • ${ride.driver?.plate ?: ""}",
                                 fontSize = 11.sp, color = DarkMuted
@@ -819,7 +817,7 @@ private fun RideStatusCard(phase: RidePhase, ride: ActiveRide, onCancel: () -> U
                 RidePhase.IN_TRIP -> {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(Mint), contentAlignment = Alignment.Center) {
-                            Text(text = "→", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = OnMintDark)
+                            RidaIcon(RidaIcons.Forward, contentDescription = null, modifier = Modifier.size(20.dp), tint = OnMintDark)
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(text = "You're on your way", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = DarkTitle)
@@ -845,15 +843,18 @@ private fun RideStatusCard(phase: RidePhase, ride: ActiveRide, onCancel: () -> U
 }
 
 @Composable
-private fun TrustItem(value: String, label: String) {
+private fun TrustItem(value: String, label: String, showRatingStar: Boolean = false) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = value, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = DarkTitle)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(text = value, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = DarkTitle)
+            if (showRatingStar) RidaIcon(RidaIcons.Star, contentDescription = null, modifier = Modifier.size(13.dp), tint = Mint)
+        }
         Text(text = label, fontSize = 10.5.sp, color = DarkMuted)
     }
 }
 
 @Composable
-private fun SavedPlaceCard(icon: String, title: String, subtitle: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun SavedPlaceCard(icon: Int, title: String, subtitle: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
@@ -864,7 +865,7 @@ private fun SavedPlaceCard(icon: String, title: String, subtitle: String, modifi
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(DarkPill), contentAlignment = Alignment.Center) { Text(text = icon, fontSize = 13.sp) }
+        Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(DarkPill), contentAlignment = Alignment.Center) { RidaIcon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = Mint) }
         Column(modifier = Modifier.weight(1f)) {
             Text(text = title, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = DarkBody)
             Text(text = subtitle, fontSize = 11.sp, color = DarkMuted)
@@ -886,16 +887,21 @@ private fun PaymentRow(method: String = "Cash", onChange: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(DarkPill), contentAlignment = Alignment.Center) {
-            Text(
-                text = when (method) { "M-Pesa", "Tigo Pesa" -> "📱"; "HaloPesa" -> "💳"; "Card" -> "💼"; else -> "💵" },
-                fontSize = 13.sp
+            RidaIcon(
+                icon = when (method) { "M-Pesa", "Tigo Pesa" -> RidaIcons.MobileMoney; "HaloPesa", "Card" -> RidaIcons.Payment; else -> RidaIcons.Cash },
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = Mint,
             )
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(text = method, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = DarkBody)
             Text(text = "Default payment", fontSize = 11.sp, color = DarkMuted)
         }
-        Text(text = "Change ›", fontSize = 11.5.sp, color = Mint, fontWeight = FontWeight.SemiBold)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(text = "Change", fontSize = 11.5.sp, color = Mint, fontWeight = FontWeight.SemiBold)
+            RidaIcon(RidaIcons.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp), tint = Mint)
+        }
     }
 }
 
@@ -915,7 +921,7 @@ private fun PremiumRideOption(title: String, subtitle: String, price: String, et
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
             Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(if (selected) Mint.copy(alpha = 0.14f) else DarkPill).border(1.dp, if (selected) Mint.copy(alpha = 0.25f) else DarkBorder.copy(alpha = 0.7f), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-                OptionCarIcon(active = selected)
+                RidaIcon(RidaIcons.Rides, contentDescription = null, modifier = Modifier.size(20.dp), tint = if (selected) Mint else DarkFaint)
             }
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -933,22 +939,8 @@ private fun PremiumRideOption(title: String, subtitle: String, price: String, et
                 Box(modifier = Modifier.size(4.dp).clip(CircleShape).background(if (selected) Mint else DarkChevron))
                 Text(text = eta, fontSize = 11.sp, color = if (selected) Mint else DarkMuted, fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal)
             }
-            if (selected) Box(modifier = Modifier.size(18.dp).clip(CircleShape).background(Mint), contentAlignment = Alignment.Center) { Text(text = "✓", color = OnMintDark, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
+            if (selected) Box(modifier = Modifier.size(18.dp).clip(CircleShape).background(Mint), contentAlignment = Alignment.Center) { RidaIcon(RidaIcons.Check, contentDescription = null, modifier = Modifier.size(13.dp), tint = OnMintDark) }
         }
-    }
-}
-
-@Composable
-private fun OptionCarIcon(active: Boolean, iconSize: Dp = 20.dp) {
-    val tint = if (active) Mint else DarkFaint
-    Canvas(modifier = Modifier.size(iconSize)) {
-        val w = size.width; val h = size.height; val stroke = 1.4.dp.toPx()
-        val path = Path().apply { moveTo(w * 0.08f, h * 0.45f); lineTo(w * 0.22f, h * 0.30f); lineTo(w * 0.32f, h * 0.18f); lineTo(w * 0.68f, h * 0.18f); lineTo(w * 0.78f, h * 0.30f); lineTo(w * 0.92f, h * 0.45f); lineTo(w * 0.92f, h * 0.68f); lineTo(w * 0.08f, h * 0.68f); close() }
-        drawPath(path = path, color = tint, style = Stroke(width = stroke, cap = StrokeCap.Round))
-        drawLine(color = tint, start = Offset(w * 0.42f, h * 0.20f), end = Offset(w * 0.42f, h * 0.43f), strokeWidth = 1.1.dp.toPx(), cap = StrokeCap.Round)
-        drawLine(color = tint, start = Offset(w * 0.58f, h * 0.20f), end = Offset(w * 0.58f, h * 0.43f), strokeWidth = 1.1.dp.toPx(), cap = StrokeCap.Round)
-        drawCircle(color = tint, radius = w * 0.09f, center = Offset(w * 0.28f, h * 0.76f), style = Stroke(width = 1.4.dp.toPx()))
-        drawCircle(color = tint, radius = w * 0.09f, center = Offset(w * 0.72f, h * 0.76f), style = Stroke(width = 1.4.dp.toPx()))
     }
 }
 

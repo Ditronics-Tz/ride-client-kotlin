@@ -12,6 +12,9 @@ import android.graphics.Shader
 import android.graphics.drawable.BitmapDrawable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -22,7 +25,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import org.osmdroid.config.Configuration
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
@@ -59,7 +65,10 @@ fun RidaMapView(
             modifier = modifier.background(if (useDarkTiles) Color(0xFF0A0F14) else Color(0xFFE5E7EB)),
             contentAlignment = Alignment.Center
         ) {
-            Text(text = "🗺 Map Preview", color = if (useDarkTiles) Color.White else Color.Black)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RidaIcon(RidaIcons.Map, contentDescription = null, modifier = Modifier.size(24.dp), tint = if (useDarkTiles) Color.White else Color.Black)
+                Text(text = "Map Preview", color = if (useDarkTiles) Color.White else Color.Black, modifier = Modifier.padding(start = 6.dp))
+            }
         }
         return
     }
@@ -199,14 +208,13 @@ fun RidaMapView(
             mapView.overlays.add(me)
         }
 
-        // Driver pins
-        driverLocations.forEach { d ->
-            val pin = Marker(mapView).apply {
-                position = d
+        driverLocations.forEach { location ->
+            val driver = Marker(mapView).apply {
+                position = location
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                 title = "Driver"
             }
-            mapView.overlays.add(pin)
+            mapView.overlays.add(driver)
         }
 
         mapView.invalidate()

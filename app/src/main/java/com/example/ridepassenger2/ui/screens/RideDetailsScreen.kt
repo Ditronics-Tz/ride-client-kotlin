@@ -24,6 +24,8 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import com.example.ridepassenger2.data.remote.MapServiceFactory
 import com.example.ridepassenger2.ui.components.HomeIndicator
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.map.RidaMapView
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 import androidx.compose.ui.tooling.preview.Preview
@@ -51,8 +53,7 @@ fun RideDetailsScreen(
     // History fallback: when opened from Activity, show that trip.
     val histParts = selected?.route?.split("→")?.map { it.trim() }.orEmpty()
     val showTitle = liveRide?.option ?: receipt?.seatsShared ?: selected?.seatsShared ?: "Standard"
-    val showSubtitle = liveRide?.driver?.let { "${it.name} ★ ${it.rating} • ${it.car}" }
-        ?: receipt?.let { "${it.date} • ${it.people}" }
+    val showSubtitle = receipt?.let { "${it.date} • ${it.people}" }
         ?: selected?.let { "${it.date} • ${it.people}" } ?: "Shared ride • 1-4 seats"
     val showPrice = liveRide?.price ?: receipt?.price ?: selected?.price ?: "—"
     val showEta = liveRide?.let { "${it.etaMin} min" } ?: "—"
@@ -158,11 +159,20 @@ fun RideDetailsScreen(
                             .border(1.dp, Color(0xFFDCE8E3), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "🚗", fontSize = 20.sp)
+                        RidaIcon(RidaIcons.Rides, contentDescription = null, modifier = Modifier.size(24.dp), tint = MintRoute)
                     }
                     Column {
                         Text(text = showTitle, color = Color(0xFF111827), fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                        Text(text = showSubtitle, color = Color(0xFF667085), fontSize = 12.sp)
+                        val activeDriver = liveRide?.driver
+                        if (activeDriver != null) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(text = activeDriver.name, color = Color(0xFF667085), fontSize = 12.sp)
+                                RidaIcon(RidaIcons.Star, contentDescription = null, modifier = Modifier.size(14.dp), tint = MintRoute)
+                                Text(text = "${activeDriver.rating} • ${activeDriver.car}", color = Color(0xFF667085), fontSize = 12.sp)
+                            }
+                        } else {
+                            Text(text = showSubtitle, color = Color(0xFF667085), fontSize = 12.sp)
+                        }
                     }
                 }
 
@@ -222,7 +232,7 @@ fun RideDetailsScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(MintRoute), contentAlignment = Alignment.Center) {
-                            Text(text = "✓", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            RidaIcon(RidaIcons.Check, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color.White)
                         }
                         Column {
                             Text(text = "Trip completed • $showPrice", color = Color(0xFF065F46), fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
@@ -244,7 +254,7 @@ fun RideDetailsScreen(
                                     catch (_: Exception) { android.widget.Toast.makeText(context, "Calling driver…", android.widget.Toast.LENGTH_SHORT).show() }
                                 }.padding(vertical = 11.dp),
                             contentAlignment = Alignment.Center
-                        ) { Text(text = "📞 Call", color = Color(0xFF111827), fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
+                        ) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) { RidaIcon(RidaIcons.Phone, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color(0xFF111827)); Text(text = "Call", color = Color(0xFF111827), fontSize = 13.sp, fontWeight = FontWeight.SemiBold) } }
                         Box(
                             modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
                                 .background(Color(0xFFFAFCFB)).border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(12.dp))
@@ -254,7 +264,7 @@ fun RideDetailsScreen(
                                     catch (_: Exception) { android.widget.Toast.makeText(context, "Messaging driver…", android.widget.Toast.LENGTH_SHORT).show() }
                                 }.padding(vertical = 11.dp),
                             contentAlignment = Alignment.Center
-                        ) { Text(text = "💬 Message", color = Color(0xFF111827), fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
+                        ) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) { RidaIcon(RidaIcons.Chat, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color(0xFF111827)); Text(text = "Message", color = Color(0xFF111827), fontSize = 13.sp, fontWeight = FontWeight.SemiBold) } }
                         Box(
                             modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
                                 .background(Color(0xFFFAFCFB)).border(1.dp, Color(0xFFDCE8E3), RoundedCornerShape(12.dp))
@@ -286,7 +296,7 @@ fun RideDetailsScreen(
                                     }
                                 }.padding(vertical = 11.dp),
                             contentAlignment = Alignment.Center
-                        ) { Text(text = "📤 Share", color = Color(0xFF111827), fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
+                        ) { Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) { RidaIcon(RidaIcons.Share, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color(0xFF111827)); Text(text = "Share", color = Color(0xFF111827), fontSize = 13.sp, fontWeight = FontWeight.SemiBold) } }
                     }
                 }
 
@@ -297,7 +307,7 @@ fun RideDetailsScreen(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(text = "◷", color = Color(0xFF667085), fontSize = 14.sp)
+                            RidaIcon(RidaIcons.Pending, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color(0xFF667085))
                             Text(text = showEta, color = Color(0xFF111827), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
                         Text(text = if (liveRide != null) "Pickup time" else "Duration", color = Color(0xFF667085), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
@@ -310,7 +320,7 @@ fun RideDetailsScreen(
                     if (active != null && active.option.contains("share", ignoreCase = true)) {
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text(text = "👥", color = Color(0xFF667085), fontSize = 14.sp)
+                                RidaIcon(RidaIcons.Users, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color(0xFF667085))
                                 Text(text = "Shared", color = Color(0xFF111827), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             }
                             Text(text = "Ride type", color = Color(0xFF667085), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
@@ -361,7 +371,7 @@ fun RideDetailsScreen(
                             .background(MintRoute.copy(alpha = 0.15f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "🍃", fontSize = 16.sp, color = MintDot)
+                        RidaIcon(RidaIcons.Leaf, contentDescription = null, modifier = Modifier.size(20.dp), tint = MintDot)
                     }
                     Column {
                         Text(text = "You're sharing this ride", color = Color(0xFF111827), fontSize = 12.sp, fontWeight = FontWeight.Bold)

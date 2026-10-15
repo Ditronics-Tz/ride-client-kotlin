@@ -2,6 +2,7 @@ package com.example.ridepassenger2.ui.profile
 
 import android.content.res.Configuration
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -42,6 +44,8 @@ import com.example.ridepassenger2.ui.common.StatusChip
 import com.example.ridepassenger2.ui.common.VerifyBanner
 import com.example.ridepassenger2.ui.common.VerifyChip
 import com.example.ridepassenger2.ui.common.VerifyState
+import com.example.ridepassenger2.ui.components.RidaIcon
+import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.preview.FakeProfile
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 
@@ -148,7 +152,10 @@ fun ProfileVerifyRows(phone: VerifyState, email: VerifyState, onEditPhone: () ->
 fun PhotoChangeScreen(progress: Float?, error: String?, onPick: () -> Unit, onRetry: () -> Unit, onBack: () -> Unit) {
     FlowScaffold(title = "Picha ya wasifu", onBack = onBack) {
         Box(Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFFE8ECE9)), contentAlignment = Alignment.Center) {
-            Text("👤  Picha (hakiki)", color = Color.Gray)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                RidaIcon(RidaIcons.Account, contentDescription = null, modifier = Modifier.size(24.dp), tint = Color.Gray)
+                Text("Picha (hakiki)", color = Color.Gray)
+            }
         }
         Spacer(Modifier.height(12.dp))
         if (progress != null) LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
