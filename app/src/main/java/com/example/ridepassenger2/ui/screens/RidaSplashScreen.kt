@@ -14,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -28,7 +27,7 @@ fun RidaSplashScreen() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(colorResource(R.color.rida_splash_background)),
+            .background(Color.White),
         contentAlignment = Alignment.Center
     ) {
         // Match the native splash's centered 288dp icon to avoid a jump at handoff.
@@ -39,7 +38,7 @@ fun RidaSplashScreen() {
         )
         Text(
             text = "Rida",
-            color = Color.White,
+            color = Color(0xFF061D3D),
             fontFamily = PoppinsFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 36.sp,
@@ -47,8 +46,8 @@ fun RidaSplashScreen() {
             modifier = Modifier.offset(y = 88.dp)
         )
         CircularProgressIndicator(
-            color = colorResource(R.color.rida_logo_emerald),
-            trackColor = Color.White.copy(alpha = 0.12f),
+            color = Color(0xFF00B875),
+            trackColor = Color(0xFFE8ECE9),
             strokeWidth = 2.dp,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
