@@ -62,7 +62,10 @@ import androidx.core.net.toUri
 import com.example.ridepassenger2.data.local.AppPrefs
 import com.example.ridepassenger2.data.local.AuthValidation
 import com.example.ridepassenger2.data.local.SessionManager
-import com.example.ridepassenger2.data.mock.RideRepository
+import com.example.ridepassenger2.data.repository.RideRepository
+import com.example.ridepassenger2.data.repository.UserRepository
+import com.example.ridepassenger2.data.remote.RidaApiClient
+import androidx.compose.runtime.LaunchedEffect
 import com.example.ridepassenger2.ui.components.HomeIndicator
 import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
@@ -357,6 +360,8 @@ fun ScheduleRideScreen(onBack: () -> Unit = {}, prefillDestination: String = "")
     var option by remember { mutableStateOf("Standard") }
     val scheduled by RideRepository.scheduled.collectAsState()
 
+    LaunchedEffect(Unit) { RideRepository.refreshScheduled() }
+
     val days = listOf("Today", "Tomorrow", "Saturday")
     val times = listOf("8:00 AM", "10:00 AM", "12:30 PM", "5:00 PM", "7:30 PM")
 
@@ -523,9 +528,9 @@ fun ScheduleRideScreen(onBack: () -> Unit = {}, prefillDestination: String = "")
         Spacer(modifier = Modifier.height(10.dp))
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             listOf(
-                Triple("Standard", "1–4 seats • Popular choice", "TZS 3,200"),
-                Triple("Comfort", "1–4 seats • Extra legroom", "TZS 4,200"),
-                Triple("XL", "1–6 seats • Group rides", "TZS 5,800")
+                Triple("Standard", "1–4 seats • Popular choice", "Quoted at booking"),
+                Triple("Comfort", "1–4 seats • Extra legroom", "Quoted at booking"),
+                Triple("XL", "1–6 seats • Group rides", "Quoted at booking")
             ).forEach { (opt, desc, prc) ->
                 val sel = option == opt
                 Row(
@@ -566,7 +571,7 @@ fun ScheduleRideScreen(onBack: () -> Unit = {}, prefillDestination: String = "")
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        val price = when (option) { "Comfort" -> "TZS 4,200"; "XL" -> "TZS 5,800"; else -> "TZS 3,200" }
+        val price = "—"
         // Gradient Confirm Button
         Row(
             modifier = Modifier
@@ -660,7 +665,7 @@ fun PackageRideScreen(onBack: () -> Unit = {}, onSent: () -> Unit = {}) {
     var phone by remember { mutableStateOf("") }
     var phoneError by remember { mutableStateOf<String?>(null) }
 
-    val price = when (size) { "Medium" -> "TZS 4,500"; "Large" -> "TZS 7,000"; else -> "TZS 3,000" }
+    var price by remember { mutableStateOf("—") }
 
     AliveScaffold(title = "Send a Package", onBack = onBack) {
         Text(text = "A rider picks up your parcel and delivers it. Pay on delivery.", fontSize = 13.5.sp, color = XMuted)
@@ -958,9 +963,14 @@ fun PersonalInfoScreen(onBack: () -> Unit = {}) {
                 .clickable {
                     if (name.trim().length < 2) { err = "Enter your full name"; return@clickable }
                     scope.launch {
-                        SessionManager.updateProfile(context, name.trim(), phone.trim(), email.trim())
-                        Toast.makeText(context, "Profile saved", Toast.LENGTH_SHORT).show()
-                        onBack()
+                        val result = UserRepository.updateProfileOnServer(context, name.trim())
+                        if (result.isSuccess) {
+                            SessionManager.updateProfile(context, name.trim(), phone.trim(), email.trim())
+                            Toast.makeText(context, "Profile saved", Toast.LENGTH_SHORT).show()
+                            onBack()
+                        } else {
+                            err = result.exceptionOrNull()?.message ?: "Could not save profile"
+                        }
                     }
                 },
             contentAlignment = Alignment.Center
@@ -979,10 +989,22 @@ fun RidePreferencesScreen(
     onSave: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var quietRide by remember { mutableStateOf(false) }
     var extraPickupTime by remember { mutableStateOf(true) }
     var shareTripStatus by remember { mutableStateOf(true) }
     var preciseLocation by remember { mutableStateOf(true) }
+    var prefsError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val prefs = RidaApiClient.api.getPreferences()
+            quietRide = prefs.quietRide == true
+            extraPickupTime = prefs.extraPickupTime != false
+            shareTripStatus = prefs.shareTripStatus != false
+            preciseLocation = prefs.preciseLocation != false
+        } catch (_: Exception) { }
+    }
 
     AliveScaffold(title = "Ride preferences", onBack = onBack) {
         Text(text = "Make every journey feel more like yours.", fontSize = 13.5.sp, color = XMuted)
@@ -1199,8 +1221,24 @@ fun RidePreferencesScreen(
                 .clip(RoundedCornerShape(18.dp))
                 .background(XMintBtn)
                 .clickable {
-                    Toast.makeText(context, "Preferences saved", Toast.LENGTH_SHORT).show()
-                    onSave()
+                    scope.launch {
+                        prefsError = null
+                        try {
+                            RidaApiClient.api.updatePreferences(
+                                mapOf(
+                                    "quiet_ride" to quietRide,
+                                    "extra_pickup_time" to extraPickupTime,
+                                    "share_trip_status" to shareTripStatus,
+                                    "precise_location" to preciseLocation
+                                )
+                            )
+                            Toast.makeText(context, "Preferences saved", Toast.LENGTH_SHORT).show()
+                            onSave()
+                        } catch (e: Exception) {
+                            prefsError = e.message ?: "Could not save preferences"
+                            Toast.makeText(context, prefsError, Toast.LENGTH_LONG).show()
+                        }
+                    }
                 },
             contentAlignment = Alignment.Center
         ) {

@@ -42,9 +42,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ridepassenger2.data.local.AppPrefs
-import com.example.ridepassenger2.data.mock.ActiveRide
-import com.example.ridepassenger2.data.mock.RidePhase
-import com.example.ridepassenger2.data.mock.RideRepository
+import com.example.ridepassenger2.data.repository.ActiveRide
+import com.example.ridepassenger2.data.repository.RidePhase
+import com.example.ridepassenger2.data.repository.RideRepository
 import com.example.ridepassenger2.data.remote.MapServiceFactory
 import com.example.ridepassenger2.data.remote.NominatimPlace
 import com.example.ridepassenger2.data.remote.osrmCoords
@@ -107,7 +107,14 @@ fun HomeMapScreen(
     val savedWork by com.example.ridepassenger2.data.local.AppPrefs.workQuery(context).collectAsState(initial = null)
     val storedRecents by com.example.ridepassenger2.data.local.AppPrefs.recents(context).collectAsState(initial = emptyList())
     val historyItems by RideRepository.history.collectAsState()
+    val quotedFare by RideRepository.quoteTzs.collectAsState()
+    val rideError by RideRepository.rideActionError.collectAsState()
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        RideRepository.refreshHistory()
+        RideRepository.restoreActiveRideIfAny()
+    }
 
     // Map state
     var currentLocation by remember { mutableStateOf<GeoPoint?>(null) }
@@ -201,23 +208,18 @@ fun HomeMapScreen(
         }
     }
 
-    val driverPins = remember(mapCenter) {
-        val base = currentLocation ?: DarCenter
-        listOf(
-            GeoPoint(base.latitude + 0.008, base.longitude + 0.006),
-            GeoPoint(base.latitude - 0.006, base.longitude + 0.009),
-            GeoPoint(base.latitude + 0.004, base.longitude - 0.007),
-        )
+    val driverPins = emptyList<GeoPoint>()
+
+    val etaText = routeDurationS?.let { "${(it / 60).toInt()} min" } ?: "—"
+    val priceText = quotedFare?.let { "TZS ${"%,d".format(it)}" } ?: "—"
+
+    LaunchedEffect(rideError) {
+        rideError?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+        }
     }
 
-    val etaText = routeDurationS?.let { "${(it / 60).toInt()} min" } ?: "10 min"
-    val priceText = run {
-        val distKm = (routeDistanceM ?: 4500.0) / 1000.0
-        val fare = 2500 + (distKm * 450).toInt()
-        "TZS ${"%,d".format(fare)}"
-    }
-
-    // ---- Live mock ride (engine lives in RideRepository; Home only observes) ----
+    // ---- Live ride from backend (RideRepository polls API) ----
     val activeRide by RideRepository.activeRide.collectAsState()
     val justCompleted by RideRepository.lastCompleted.collectAsState()
     val driverPin by RideRepository.driverPin.collectAsState()
@@ -690,14 +692,7 @@ data class ShareRideItem(val time: String, val seatsTaken: Int, val price: Strin
 
 @Composable
 private fun SharedRidesSection(onJoin: (ShareRideItem) -> Unit) {
-    val rides = remember {
-        listOf(
-            ShareRideItem("10:15 AM", 2, "TZS 2,500"),
-            ShareRideItem("11:00 AM", 1, "TZS 2,800"),
-            ShareRideItem("12:30 PM", 3, "TZS 2,400", full = true),
-            ShareRideItem("2:00 PM", 1, "TZS 2,600")
-        )
-    }
+    val rides = emptyList<ShareRideItem>()
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.size(22.dp).clip(CircleShape).background(Mint.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) { Text(text = "👥", fontSize = 11.sp) }
@@ -708,6 +703,14 @@ private fun SharedRidesSection(onJoin: (ShareRideItem) -> Unit) {
         }
     }
     Spacer(modifier = Modifier.height(10.dp))
+    if (rides.isEmpty()) {
+        Text(
+            text = "No shared rides available nearby right now.",
+            fontSize = 12.sp,
+            color = DarkMuted,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+    }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         rides.forEach { item ->
             Row(

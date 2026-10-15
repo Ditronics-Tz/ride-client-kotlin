@@ -22,7 +22,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ridepassenger2.data.local.SessionManager
-import com.example.ridepassenger2.data.mock.RideRepository
+import com.example.ridepassenger2.data.repository.RideRepository
+import com.example.ridepassenger2.data.repository.UserRepository
+import androidx.compose.runtime.LaunchedEffect
 
 // Dark palette — locked to the home screen
 private val ProfPageBg = Color(0xFF0A0F14)
@@ -55,6 +57,13 @@ private fun ProfileScreenInternal(
     val context = LocalContext.current
     val session by SessionManager.observe(context).collectAsState(initial = SessionManager.Session())
     val trips by RideRepository.history.collectAsState()
+    val sharedCount = trips.count { it.isShared }
+
+    LaunchedEffect(Unit) {
+        UserRepository.refreshSessionFromApi(context)
+        RideRepository.refreshHistory()
+    }
+
     val displayName = session.name.ifBlank { "Rida Rider" }
     val initials = displayName.split(" ").filter { it.isNotBlank() }.take(2)
         .joinToString("") { it.first().uppercase() }.ifBlank { "RR" }
@@ -130,9 +139,9 @@ private fun ProfileScreenInternal(
             ) {
                 StatItem(trips.size.toString(), "Rides taken")
                 Box(modifier = Modifier.width(1.dp).height(36.dp).background(ProfBorder))
-                StatItemWithStar("4.8", "Rating")
+                StatItem("—", "Rating")
                 Box(modifier = Modifier.width(1.dp).height(36.dp).background(ProfBorder))
-                StatItem(trips.size.toString(), "Rides shared")
+                StatItem(sharedCount.toString(), "Rides shared")
             }
 
             Spacer(modifier = Modifier.height(14.dp))

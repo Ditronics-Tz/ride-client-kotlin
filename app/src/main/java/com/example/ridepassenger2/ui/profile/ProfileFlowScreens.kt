@@ -159,7 +159,17 @@ fun PhotoChangeScreen(progress: Float?, error: String?, onPick: () -> Unit, onRe
 
 // ---- Security ----
 @Composable
-fun SecurityScreen(pw: String, confirm: String, onPw: (String) -> Unit, onConfirm: (String) -> Unit, onSavePw: () -> Unit, onLogoutDevice: (String) -> Unit, onLogoutAll: () -> Unit, onBack: () -> Unit) {
+fun SecurityScreen(
+    pw: String,
+    confirm: String,
+    onPw: (String) -> Unit,
+    onConfirm: (String) -> Unit,
+    devices: List<String> = emptyList(),
+    onSavePw: () -> Unit,
+    onLogoutDevice: (String) -> Unit,
+    onLogoutAll: () -> Unit,
+    onBack: () -> Unit
+) {
     val mismatch = confirm.isNotEmpty() && pw != confirm
     FlowScaffold(title = "Usalama", onBack = onBack) {
         RidaField(value = pw, onValueChange = onPw, label = "Nenosiri jipya", placeholder = "••••••••")
@@ -168,8 +178,12 @@ fun SecurityScreen(pw: String, confirm: String, onPw: (String) -> Unit, onConfir
         RidaField(value = confirm, onValueChange = onConfirm, label = "Thibitisha", placeholder = "••••••••", error = if (mismatch) "Havilingani" else null)
         Spacer(Modifier.height(8.dp)); RidaPrimaryButton("Badili nenosiri", onSavePw, enabled = !mismatch && pw.length >= 8)
         Spacer(Modifier.height(14.dp)); Text("Vifaa vilivyoingia", fontWeight = FontWeight.Bold)
-        FakeProfile.sessions().forEach { sess ->
-            FlowRow(title = sess, subtitle = "Ilitumika hivi karibuni", onClick = { onLogoutDevice(sess) }); Spacer(Modifier.height(8.dp))
+        if (devices.isEmpty()) {
+            Text("No active sessions found.", fontSize = 13.sp, color = Color.Gray)
+        } else {
+            devices.forEach { sess ->
+                FlowRow(title = sess, subtitle = "Ilitumika hivi karibuni", onClick = { onLogoutDevice(sess) }); Spacer(Modifier.height(8.dp))
+            }
         }
         TextButton(onClick = onLogoutAll, modifier = Modifier.heightIn(min = 48.dp)) { Text("Toka vifaa vyote") }
     }

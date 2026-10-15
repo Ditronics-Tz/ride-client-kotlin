@@ -15,7 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.ridepassenger2.data.local.SessionManager
-import com.example.ridepassenger2.data.mock.RideRepository
+import com.example.ridepassenger2.data.repository.RideRepository
 import com.example.ridepassenger2.ui.components.RidaBottomBar
 import com.example.ridepassenger2.ui.screens.*
 import kotlinx.coroutines.launch
@@ -113,7 +113,7 @@ fun AppNavGraph(
                         // Center car button → live request flow. Clear any history selection
                         // so details shows the live ride (or empty), not a stale trip.
                         if (currentRoute != Routes.RIDE_DETAILS) {
-                            com.example.ridepassenger2.data.mock.RideRepository.selectHistory(null)
+                            RideRepository.selectHistory(null)
                             navController.navigate(Routes.RIDE_DETAILS) {
                                 launchSingleTop = true
                             }
@@ -340,7 +340,7 @@ fun AppNavGraph(
                 composable(Routes.PAY_FLOW) { PaymentFlowNav() }
                 composable(Routes.PAY_HISTORY) {
                     com.example.ridepassenger2.ui.payment.PayHistoryScreen(
-                        records = com.example.ridepassenger2.ui.preview.FakePayments.history(),
+                        records = emptyList(),
                         filter = com.example.ridepassenger2.ui.payment.PayFilter.ALL,
                         onFilter = {}, onOpen = {}, onBack = { navController.popBackStack() }
                     )

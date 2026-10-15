@@ -55,6 +55,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ridepassenger2.data.local.AppPrefs
+import com.example.ridepassenger2.data.remote.MapServiceFactory
+import com.example.ridepassenger2.data.remote.RidaApiClient
+import com.example.ridepassenger2.data.remote.SavedPlaceDto
+import androidx.compose.runtime.LaunchedEffect
 import com.example.ridepassenger2.ui.components.HomeIndicator
 import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
@@ -76,6 +80,12 @@ data class SavedPlaceItem(
     val address: String
 )
 
+private suspend fun geocodeLatLng(address: String): Pair<Double, Double> {
+    val q = if (address.contains(",")) address else "$address, Dar es Salaam, Tanzania"
+    val hit = MapServiceFactory.nominatim.search(query = q, limit = 1).firstOrNull()
+    return if (hit != null) Pair(hit.lat.toDouble(), hit.lon.toDouble()) else Pair(-6.7924, 39.2083)
+}
+
 @Composable
 fun SavedPlacesScreen(
     onBack: () -> Unit = {},
@@ -90,14 +100,31 @@ fun SavedPlacesScreen(
     var editTitleDraft by remember { mutableStateOf("") }
     var editAddressDraft by remember { mutableStateOf("") }
 
-    val customPlaces = remember {
-        mutableStateListOf(
-            SavedPlaceItem(
-                id = "mlimani_mall",
-                title = "Mlimani City Mall",
-                address = "Sam Nujoma Road, Dar es Salaam"
-            )
-        )
+    var customPlaces by remember { mutableStateOf<List<SavedPlaceItem>>(emptyList()) }
+    var placesLoading by remember { mutableStateOf(true) }
+    var homePlaceId by remember { mutableStateOf<String?>(null) }
+    var workPlaceId by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        placesLoading = true
+        try {
+            val resp = RidaApiClient.api.getSavedPlaces()
+            resp.places.firstOrNull { it.kind == "home" }?.let {
+                homePlaceId = it.id
+                AppPrefs.setHome(context, it.address)
+            }
+            resp.places.firstOrNull { it.kind == "work" }?.let {
+                workPlaceId = it.id
+                AppPrefs.setWork(context, it.address)
+            }
+            customPlaces = resp.places
+                .filter { it.kind == "custom" && !it.id.isNullOrBlank() }
+                .map { SavedPlaceItem(it.id!!, it.label, it.address) }
+        } catch (_: Exception) {
+            customPlaces = emptyList()
+        } finally {
+            placesLoading = false
+        }
     }
 
     fun openEditShortcut(type: String, currentAddress: String?) {
@@ -232,6 +259,13 @@ fun SavedPlacesScreen(
                 )
                 Spacer(Modifier.height(12.dp))
 
+                if (placesLoading && customPlaces.isEmpty()) {
+                    Text(text = "Loading saved places…", fontSize = 13.sp, color = TextMuted)
+                    Spacer(Modifier.height(10.dp))
+                } else if (!placesLoading && customPlaces.isEmpty()) {
+                    Text(text = "No saved places yet.", fontSize = 13.sp, color = TextMuted)
+                    Spacer(Modifier.height(10.dp))
+                }
                 customPlaces.forEach { place ->
                     CustomPlaceCard(
                         item = place,
@@ -328,28 +362,79 @@ fun SavedPlacesScreen(
             onBack = { editingType = null },
             onSave = { label, address ->
                 scope.launch {
-                    when (editingType) {
-                        "home" -> AppPrefs.setHome(context, address)
-                        "work" -> AppPrefs.setWork(context, address)
-                        "new" -> {
-                            customPlaces.add(
-                                SavedPlaceItem(
-                                    id = "custom_${System.currentTimeMillis()}",
-                                    title = label,
-                                    address = address
+                    try {
+                        val (lat, lng) = geocodeLatLng(address)
+                        when (editingType) {
+                            "home" -> {
+                                AppPrefs.setHome(context, address)
+                                val dto = SavedPlaceDto(
+                                    id = homePlaceId,
+                                    kind = "home",
+                                    label = label.ifBlank { "Home" },
+                                    address = address,
+                                    lat = lat,
+                                    lng = lng
                                 )
-                            )
-                        }
-                        else -> {
-                            val index = customPlaces.indexOfFirst { it.id == editingType }
-                            if (index >= 0) {
-                                customPlaces[index] = SavedPlaceItem(
-                                    id = editingType!!,
-                                    title = label,
-                                    address = address
+                                if (homePlaceId != null) {
+                                    RidaApiClient.api.updateSavedPlace(homePlaceId!!, dto)
+                                } else {
+                                    val created = RidaApiClient.api.createSavedPlace(dto)
+                                    homePlaceId = created.id
+                                }
+                            }
+                            "work" -> {
+                                AppPrefs.setWork(context, address)
+                                val dto = SavedPlaceDto(
+                                    id = workPlaceId,
+                                    kind = "work",
+                                    label = label.ifBlank { "Work" },
+                                    address = address,
+                                    lat = lat,
+                                    lng = lng
+                                )
+                                if (workPlaceId != null) {
+                                    RidaApiClient.api.updateSavedPlace(workPlaceId!!, dto)
+                                } else {
+                                    val created = RidaApiClient.api.createSavedPlace(dto)
+                                    workPlaceId = created.id
+                                }
+                            }
+                            "new" -> {
+                                RidaApiClient.api.createSavedPlace(
+                                    SavedPlaceDto(
+                                        kind = "custom",
+                                        label = label,
+                                        address = address,
+                                        lat = lat,
+                                        lng = lng
+                                    )
                                 )
                             }
+                            else -> {
+                                val id = editingType
+                                if (id != null) {
+                                    RidaApiClient.api.updateSavedPlace(
+                                        id,
+                                        SavedPlaceDto(
+                                            id = id,
+                                            kind = "custom",
+                                            label = label,
+                                            address = address,
+                                            lat = lat,
+                                            lng = lng
+                                        )
+                                    )
+                                }
+                            }
                         }
+                        try {
+                            val resp = RidaApiClient.api.getSavedPlaces()
+                            customPlaces = resp.places
+                                .filter { it.kind == "custom" && !it.id.isNullOrBlank() }
+                                .map { SavedPlaceItem(it.id!!, it.label, it.address) }
+                        } catch (_: Exception) { }
+                    } catch (e: Exception) {
+                        Toast.makeText(context, e.message ?: "Could not save place", Toast.LENGTH_LONG).show()
                     }
                     editingType = null
                 }

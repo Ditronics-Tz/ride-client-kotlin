@@ -12,6 +12,8 @@ import com.example.ridepassenger2.ui.navigation.Routes
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 import com.example.ridepassenger2.data.local.SessionManager
 import com.example.ridepassenger2.data.remote.RidaApiClient
+import com.example.ridepassenger2.data.repository.RideRepository
+import com.example.ridepassenger2.data.repository.UserRepository
 import kotlinx.coroutines.runBlocking
 
 class MainActivity : ComponentActivity() {
@@ -20,7 +22,16 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         RidaApiClient.init(applicationContext)
         val start = try {
-            runBlocking { SessionManager.isLoggedIn(this@MainActivity) }
+            runBlocking {
+                val loggedIn = SessionManager.isLoggedIn(this@MainActivity)
+                if (loggedIn) {
+                    UserRepository.refreshSessionFromApi(this@MainActivity)
+                    RideRepository.refreshHistory()
+                    RideRepository.restoreActiveRideIfAny()
+                    RideRepository.refreshScheduled()
+                }
+                loggedIn
+            }
         } catch (_: Exception) { false }
         setContent {
             RIDEPASSENGER2Theme {

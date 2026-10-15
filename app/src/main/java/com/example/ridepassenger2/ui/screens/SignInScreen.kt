@@ -85,6 +85,7 @@ import com.example.ridepassenger2.data.local.GoogleAuthManager
 import com.example.ridepassenger2.data.local.SessionManager
 import com.example.ridepassenger2.data.remote.LoginRequest
 import com.example.ridepassenger2.data.remote.RidaApiClient
+import com.example.ridepassenger2.data.repository.UserRepository
 import com.example.ridepassenger2.ui.components.RidaLogo
 import kotlinx.coroutines.launch
 
@@ -113,6 +114,7 @@ fun SignInScreen(
     var idError by remember { mutableStateOf<String?>(null) }
     var pwError by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
+    var formError by remember { mutableStateOf<String?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -125,28 +127,27 @@ fun SignInScreen(
         val (name, handle) = AuthValidation.displayFor(identifier)
         scope.launch {
             isLoading = true
+            formError = null
             try {
-                try {
-                    val loginReq = LoginRequest(
-                        identifier = identifier.trim(),
-                        password = password
-                    )
-                    val sessionResp = RidaApiClient.api.login(loginReq)
-                    val user = sessionResp.user
-                    SessionManager.save(
-                        context = context,
-                        name = user.name.ifBlank { name },
-                        handle = handle,
-                        phone = user.phone ?: "",
-                        email = user.email ?: "",
-                        accessToken = sessionResp.getEffectiveAccessToken(),
-                        refreshToken = sessionResp.getEffectiveRefreshToken()
-                    )
-                } catch (e: Exception) {
-                    if (rememberMe) SessionManager.save(context, name, handle)
-                    else SessionManager.clear(context)
-                }
+                val loginReq = LoginRequest(
+                    identifier = identifier.trim(),
+                    password = password
+                )
+                val sessionResp = RidaApiClient.api.login(loginReq)
+                val user = sessionResp.user
+                SessionManager.save(
+                    context = context,
+                    name = user.name.ifBlank { name },
+                    handle = handle,
+                    phone = user.phone ?: "",
+                    email = user.email ?: "",
+                    accessToken = sessionResp.getEffectiveAccessToken(),
+                    refreshToken = sessionResp.getEffectiveRefreshToken()
+                )
+                UserRepository.refreshSessionFromApi(context)
                 onSignIn()
+            } catch (e: Exception) {
+                formError = e.message ?: "Sign in failed. Check your details and try again."
             } finally {
                 isLoading = false
             }
@@ -300,6 +301,7 @@ fun SignInScreen(
                     isError = pwError != null
                 )
                 AuthError(pwError)
+                AuthError(formError)
 
                 Spacer(Modifier.height(6.dp))
                 RememberMeRow(
