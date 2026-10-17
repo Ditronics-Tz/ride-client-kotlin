@@ -228,7 +228,6 @@ fun AppNavGraph(
                         onRequestRide = { navController.navigate(Routes.RIDE_DETAILS) },
                         onSchedule = { navController.navigate(Routes.SCHEDULE) },
                         onPackage = { navController.navigate(Routes.PACKAGE) },
-                        onSafety = { navController.navigate(Routes.SAFETY) },
                         onSavedPlaces = { navController.navigate(Routes.SAVED_PLACES) },
                         onPayment = { navController.navigate(Routes.PAYMENT) }
                     )

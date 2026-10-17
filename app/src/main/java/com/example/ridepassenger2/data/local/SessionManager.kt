@@ -3,6 +3,7 @@ package com.example.ridepassenger2.data.local
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.ridepassenger2.data.remote.SessionResponse
@@ -27,6 +28,7 @@ object SessionManager {
     private val ACCESS_TOKEN = stringPreferencesKey("access_token")
     private val REFRESH_TOKEN = stringPreferencesKey("refresh_token")
     private val PROFILE_PIC = stringPreferencesKey("profile_pic")
+    private val PROFILE_PIC_VERSION = longPreferencesKey("profile_pic_version")
 
     data class Session(
         val loggedIn: Boolean = false,
@@ -37,7 +39,8 @@ object SessionManager {
         val profileCompleted: Boolean? = null,
         val accessToken: String? = null,
         val refreshToken: String? = null,
-        val profilePictureUrl: String? = null
+        val profilePictureUrl: String? = null,
+        val profilePictureVersion: Long = 0
     ) {
         val isProfileComplete: Boolean
             get() = profileCompleted ?: (name.isNotBlank() && phone.isNotBlank())
@@ -54,7 +57,8 @@ object SessionManager {
                 profileCompleted = prefs[PROFILE_COMPLETED],
                 accessToken = prefs[ACCESS_TOKEN],
                 refreshToken = prefs[REFRESH_TOKEN],
-                profilePictureUrl = prefs[PROFILE_PIC]
+                profilePictureUrl = prefs[PROFILE_PIC],
+                profilePictureVersion = prefs[PROFILE_PIC_VERSION] ?: 0
             )
         }
 
@@ -135,6 +139,13 @@ object SessionManager {
                 if (prefs[HANDLE].isNullOrBlank()) prefs[HANDLE] = email
             }
             prefs.remove(PROFILE_COMPLETED)
+        }
+    }
+
+    suspend fun updateProfilePicture(context: Context, url: String, forceRefresh: Boolean = false) {
+        context.sessionStore.edit { prefs ->
+            if (prefs[PROFILE_PIC] != url || forceRefresh) prefs[PROFILE_PIC_VERSION] = System.currentTimeMillis()
+            prefs[PROFILE_PIC] = url
         }
     }
 

@@ -28,6 +28,9 @@ object UserRepository {
 
         try {
             val profile = RidaApiClient.api.getProfile()
+            ProfilePhotoContract.photoUrl(profile, RidaApiClient.BASE_URL)?.let {
+                SessionManager.updateProfilePicture(context, it)
+            }
             val fullName = (profile["full_name"] as? String)
                 ?: (profile["name"] as? String)
             val phone = profile["phone"] as? String

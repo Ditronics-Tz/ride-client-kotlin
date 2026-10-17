@@ -25,6 +25,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -37,6 +40,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ridepassenger2.data.local.AppPrefs
+import com.example.ridepassenger2.data.local.SessionManager
 import com.example.ridepassenger2.data.repository.ActiveRide
 import com.example.ridepassenger2.data.repository.RidePhase
 import com.example.ridepassenger2.data.repository.RideRepository
@@ -46,6 +50,7 @@ import com.example.ridepassenger2.data.remote.osrmCoords
 import com.example.ridepassenger2.ui.components.RidaIcon
 import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.components.RidaLogo
+import com.example.ridepassenger2.ui.components.UserAvatar
 import com.example.ridepassenger2.ui.map.RidaMapView
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -54,6 +59,7 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.osmdroid.util.GeoPoint
 
@@ -106,7 +112,6 @@ fun HomeMapScreen(
     onRequestRide: () -> Unit = {},
     onSchedule: () -> Unit = {},
     onPackage: () -> Unit = {},
-    onSafety: () -> Unit = {},
     onSavedPlaces: () -> Unit = {},
     onPayment: () -> Unit = {}
 ) {
@@ -124,6 +129,9 @@ fun HomeMapScreen(
     val quotedFare by RideRepository.quoteTzs.collectAsState()
     val rideError by RideRepository.rideActionError.collectAsState()
     val scope = rememberCoroutineScope()
+
+    // Saved passenger profile, including the uploaded avatar.
+    val session by SessionManager.observe(context).collectAsState(initial = SessionManager.Session())
 
     LaunchedEffect(Unit) {
         RideRepository.refreshHistory()
@@ -146,6 +154,34 @@ fun HomeMapScreen(
     var isSearching by remember { mutableStateOf(false) }
     var searchFocused by remember { mutableStateOf(false) }
     var searchError by remember { mutableStateOf(false) }
+    var resultsQuery by remember { mutableStateOf("") }
+    var searchCompleted by remember { mutableStateOf(false) }
+    var searchAttempt by remember { mutableIntStateOf(0) }
+    val searchFocusRequester = remember { FocusRequester() }
+
+    fun selectDestination(place: NominatimPlace) {
+        destination = GeoPoint(place.lat.toDouble(), place.lon.toDouble())
+        destinationLabel = place.displayName.substringBefore(",")
+        query = destinationLabel.orEmpty()
+        searchFocused = false
+        searchResults = emptyList()
+        keyboardController?.hide()
+        scope.launch { AppPrefs.pushRecent(context, query) }
+    }
+
+    fun searchRides() {
+        if (query.trim().length < 2) {
+            searchFocusRequester.requestFocus()
+            keyboardController?.show()
+        } else {
+            val firstResult = searchResults.firstOrNull()?.takeIf { resultsQuery == query }
+            if (firstResult != null) selectDestination(firstResult)
+            else {
+                searchFocused = true
+                searchAttempt++
+            }
+        }
+    }
 
     val isPreview = LocalInspectionMode.current
     val permissionState = if (isPreview) null else rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -174,7 +210,9 @@ fun HomeMapScreen(
     LaunchedEffect(Unit) { if (!isPermissionGranted && !isPreview) permissionState?.launchPermissionRequest() }
     LaunchedEffect(isPermissionGranted) { if (isPermissionGranted) fetchLocation() }
 
-    LaunchedEffect(query) {
+    LaunchedEffect(query, searchAttempt) {
+        searchResults = emptyList()
+        searchCompleted = false
         if (query.trim().length < 2) { searchResults = emptyList(); isSearching = false; searchError = false; return@LaunchedEffect }
         delay(520)
         isSearching = true
@@ -182,6 +220,9 @@ fun HomeMapScreen(
         try {
             val q = if (query.contains(",")) query else "$query, Dar es Salaam"
             searchResults = MapServiceFactory.nominatim.search(query = q, limit = 6)
+            resultsQuery = query
+            searchCompleted = true
+        } catch (e: CancellationException) { throw e
         } catch (_: Exception) { searchResults = emptyList(); searchError = true } finally { isSearching = false }
     }
 
@@ -311,57 +352,73 @@ fun HomeMapScreen(
                                 .border(1.dp, Color.White.copy(alpha = 0.80f), CircleShape)
                                 .clickable(onClick = onProfile),
                             contentAlignment = Alignment.Center
-                        ) { Text(text = "DM", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkTitle) }
+                        ) {
+                            UserAvatar(
+                                name = session.name,
+                                photoUrl = session.profilePictureUrl,
+                                modifier = Modifier.fillMaxSize(),
+                                contentDescription = "Profile",
+                                photoVersion = session.profilePictureVersion
+                            )
+                        }
                     }
                     Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.40f)))
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                        Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(MintSoft))
+                        RidaIcon(RidaIcons.Rides, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color.Black)
                         BasicTextField(
                             value = query,
                             onValueChange = { query = it; searchFocused = true },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).focusRequester(searchFocusRequester)
+                                .onFocusChanged { if (it.isFocused) searchFocused = true },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(onSearch = { searchResults.firstOrNull()?.let { p -> val gp = GeoPoint(p.lat.toDouble(), p.lon.toDouble()); destination = gp; destinationLabel = p.displayName.substringBefore(","); query = p.displayName.substringBefore(","); searchFocused = false; searchResults = emptyList(); keyboardController?.hide(); scope.launch { AppPrefs.pushRecent(context, query) } } }),
+                            keyboardActions = KeyboardActions(onSearch = { searchRides() }),
                             textStyle = LocalTextStyle.current.copy(fontSize = 13.5.sp, color = DarkTitle),
-                            cursorBrush = SolidColor(Mint),
+                            cursorBrush = SolidColor(Color.Black),
                             decorationBox = { innerTextField ->
                                 if (query.isEmpty()) {
-                                    Text(text = "Where to?", fontSize = 13.sp, color = DarkBody)
+                                    Text(text = "Look for rides", fontSize = 13.sp, color = DarkBody)
                                 }
                                 innerTextField()
                             }
                         )
-                        if (query.isNotEmpty()) Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(DarkPill).clickable { query = ""; destination = null; destinationLabel = null; routePoints = emptyList(); searchResults = emptyList() }, contentAlignment = Alignment.Center) { RidaIcon(RidaIcons.Close, contentDescription = "Clear search", modifier = Modifier.size(18.dp), tint = DarkMuted) }
+                        if (query.isNotEmpty()) {
+                            HomeGlassIconButton(icon = RidaIcons.Close, label = "Clear search") {
+                                query = ""; destination = null; destinationLabel = null
+                                routePoints = emptyList(); searchResults = emptyList()
+                            }
+                        }
+                        HomeGlassIconButton(icon = RidaIcons.Search, label = "Search rides", onClick = { searchRides() })
                     }
                 }
             }
 
             // Nominatim results — dark dropdown under the search card
-            AnimatedVisibility(visible = searchFocused && (isSearching || searchError || searchResults.isNotEmpty())) {
+            AnimatedVisibility(visible = searchFocused && (isSearching || searchError || searchCompleted)) {
                 Box(modifier = Modifier.padding(top = 8.dp).fillMaxWidth().shadow(8.dp, RoundedCornerShape(16.dp)).clip(RoundedCornerShape(16.dp)).background(DarkCardBg2).border(1.dp, DarkBorder, RoundedCornerShape(16.dp))) {
                     if (isSearching) Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Mint)
-                        Text(text = "Searching Nominatim…", fontSize = 12.sp, color = DarkMuted)
+                        Text(text = "Searching destinations…", fontSize = 12.sp, color = DarkMuted)
                     } else if (searchError) Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         RidaIcon(RidaIcons.Warning, contentDescription = null, modifier = Modifier.size(18.dp), tint = DarkMuted)
                         Text(text = "Couldn't search — check your connection and retry", fontSize = 12.sp, color = DarkMuted)
+                    } else if (searchResults.isEmpty()) {
+                        Text("No matching destinations. Try another name.", modifier = Modifier.padding(14.dp), fontSize = 12.sp, color = DarkMuted)
                     } else LazyColumn(modifier = Modifier.heightIn(max = 220.dp)) {
                         items(searchResults) { place ->
-                            Row(modifier = Modifier.fillMaxWidth().clickable { val gp = GeoPoint(place.lat.toDouble(), place.lon.toDouble()); destination = gp; destinationLabel = place.displayName.substringBefore(","); query = place.displayName.substringBefore(","); searchFocused = false; searchResults = emptyList(); keyboardController?.hide(); scope.launch { AppPrefs.pushRecent(context, query) } }.padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth().clickable { selectDestination(place) }.padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(DarkPill), contentAlignment = Alignment.Center) { RidaIcon(RidaIcons.SavedPlace, contentDescription = null, modifier = Modifier.size(16.dp), tint = Mint) }
                                 Column(modifier = Modifier.weight(1f)) { Text(text = place.displayName.substringBefore(","), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = DarkTitle); Text(text = place.displayName, fontSize = 11.sp, color = DarkMuted, maxLines = 1) }
                             }
                             if (place != searchResults.last()) Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(DarkDivider))
                         }
-                        item { Text(text = "Tiles: Google (night) • Search: Nominatim • Route: OSRM", modifier = Modifier.padding(10.dp), fontSize = 9.sp, color = DarkFaint) }
                     }
                 }
             }
             Spacer(modifier = Modifier.weight(1f))
         }
 
-        // Safety + re-center rail — Bolt-style right side
+        // Keep the location control accessible over the map.
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -370,26 +427,9 @@ fun HomeMapScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .shadow(6.dp, CircleShape)
-                    .clip(CircleShape)
-                    .background(DarkCardBg)
-                    .border(1.dp, DarkBorder, CircleShape)
-                    .clickable(onClick = onSafety),
-                contentAlignment = Alignment.Center
-            ) { RidaIcon(RidaIcons.Safety, contentDescription = "Safety", modifier = Modifier.size(20.dp), tint = Mint) }
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .shadow(6.dp, CircleShape)
-                    .clip(CircleShape)
-                    .background(DarkCardBg)
-                    .border(1.dp, DarkBorder, CircleShape)
-                    .clickable { if (!isPermissionGranted) permissionState?.launchPermissionRequest() else fetchLocation() },
-                contentAlignment = Alignment.Center
-            ) { RidaIcon(RidaIcons.Locate, contentDescription = "Use current location", modifier = Modifier.size(20.dp), tint = Mint) }
+            HomeGlassIconButton(icon = RidaIcons.Locate, label = "Use current location") {
+                if (!isPermissionGranted) permissionState?.launchPermissionRequest() else fetchLocation()
+            }
         }
     }
 
@@ -535,6 +575,20 @@ private fun SharedRidesSection(onJoin: (ShareRideItem) -> Unit) {
         }
     }
     Spacer(modifier = Modifier.height(10.dp))
+}
+
+@Composable
+private fun HomeGlassIconButton(icon: Int, label: String, onClick: () -> Unit) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier.size(48.dp)
+            .shadow(6.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.06f), spotColor = Color.Black.copy(alpha = 0.10f))
+            .clip(CircleShape)
+            .background(HomeGlassFill)
+            .border(1.dp, HomeGlassEdge, CircleShape)
+    ) {
+        RidaIcon(icon, contentDescription = label, modifier = Modifier.size(22.dp), tint = Color.Black)
+    }
 }
 
 @Composable
