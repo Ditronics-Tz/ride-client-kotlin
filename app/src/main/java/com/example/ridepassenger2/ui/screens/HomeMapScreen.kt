@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
@@ -75,6 +76,22 @@ private val DarkChevron = Color(0xFF9CA3AF)
 private val Mint = Color(0xFF00C878)
 private val MintSoft = Color(0xFF00B368)
 private val OnMintDark = Color.White
+
+private val HomeGlassShape = RoundedCornerShape(24.dp)
+private val HomeGlassFill = Brush.linearGradient(
+    colors = listOf(
+        Color.White.copy(alpha = 0.50f),
+        Color(0xFFE9F8F1).copy(alpha = 0.22f),
+        Color.White.copy(alpha = 0.36f)
+    )
+)
+private val HomeGlassEdge = Brush.linearGradient(
+    colors = listOf(
+        Color.White.copy(alpha = 0.75f),
+        Color.White.copy(alpha = 0.15f),
+        Color.White.copy(alpha = 0.55f)
+    )
+)
 
 private val DarCenter = GeoPoint(-6.7924, 39.2083)
 
@@ -267,15 +284,19 @@ fun HomeMapScreen(
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 16.dp)) {
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Compact top bar — Rida + location + search in ONE slim card,
-            // leaving maximum room for the map underneath.
+            // Translucent glass lets the map show through while controls stay crisp.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .shadow(8.dp, RoundedCornerShape(20.dp), ambientColor = Color.Black.copy(alpha = 0.4f))
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(DarkCardBg2.copy(alpha = 0.96f))
-                    .border(1.dp, DarkBorder, RoundedCornerShape(20.dp))
+                    .shadow(
+                        elevation = 8.dp,
+                        shape = HomeGlassShape,
+                        ambientColor = Color(0xFF163C2F).copy(alpha = 0.05f),
+                        spotColor = Color(0xFF163C2F).copy(alpha = 0.08f)
+                    )
+                    .clip(HomeGlassShape)
+                    .background(HomeGlassFill)
+                    .border(1.dp, HomeGlassEdge, HomeGlassShape)
                     .padding(horizontal = 12.dp, vertical = 10.dp)
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -288,13 +309,13 @@ fun HomeMapScreen(
                             modifier = Modifier
                                 .size(32.dp)
                                 .clip(CircleShape)
-                                .background(DarkCardBg)
-                                .border(1.dp, DarkBorder, CircleShape)
+                                .background(Color.White.copy(alpha = 0.26f))
+                                .border(1.dp, Color.White.copy(alpha = 0.80f), CircleShape)
                                 .clickable(onClick = onProfile),
                             contentAlignment = Alignment.Center
                         ) { Text(text = "DM", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DarkTitle) }
                     }
-                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(DarkDivider))
+                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.40f)))
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                         Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(MintSoft))
                         BasicTextField(
@@ -308,7 +329,7 @@ fun HomeMapScreen(
                             cursorBrush = SolidColor(Mint),
                             decorationBox = { innerTextField ->
                                 if (query.isEmpty()) {
-                                    Text(text = "Where to?", fontSize = 13.sp, color = DarkFaint)
+                                    Text(text = "Where to?", fontSize = 13.sp, color = DarkBody)
                                 }
                                 innerTextField()
                             }
