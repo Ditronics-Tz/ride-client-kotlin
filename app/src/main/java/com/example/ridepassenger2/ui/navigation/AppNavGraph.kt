@@ -21,10 +21,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.ridepassenger2.data.local.SessionManager
 import com.example.ridepassenger2.data.repository.RideRepository
 import com.example.ridepassenger2.ui.components.RidaBottomBar
@@ -143,16 +145,6 @@ fun AppNavGraph(
                     selected = selectedTab,
                     onHome = { navigateBottomBar(Routes.HOME_MAP) },
                     onActivity = { navigateBottomBar(Routes.RIDE_HISTORY) },
-                    onCenter = {
-                        // Center car button → live request flow. Clear any history selection
-                        // so details shows the live ride (or empty), not a stale trip.
-                        if (currentRoute != Routes.RIDE_DETAILS) {
-                            RideRepository.selectHistory(null)
-                            navController.navigate(Routes.RIDE_DETAILS) {
-                                launchSingleTop = true
-                            }
-                        }
-                    },
                     onProfile = { navigateBottomBar(Routes.PROFILE) }
                 )
             }
@@ -241,8 +233,15 @@ fun AppNavGraph(
                         onPayment = { navController.navigate(Routes.PAYMENT) }
                     )
                 }
-                composable(Routes.RIDE_DETAILS) {
+                composable(
+                    route = "${Routes.RIDE_DETAILS}?fromHistory={fromHistory}",
+                    arguments = listOf(navArgument("fromHistory") {
+                        type = NavType.BoolType
+                        defaultValue = false
+                    })
+                ) { entry ->
                     RideDetailsScreen(
+                        showSelectedHistory = entry.arguments?.getBoolean("fromHistory") == true,
                         onBack = { navController.popBackStack() },
                         onCancel = { navController.popBackStack() }
                     )
@@ -251,7 +250,7 @@ fun AppNavGraph(
                     RideHistoryScreen(
                         onRideClick = { item ->
                             RideRepository.selectHistory(item)
-                            navController.navigate(Routes.RIDE_DETAILS)
+                            navController.navigate("${Routes.RIDE_DETAILS}?fromHistory=true")
                         }
                     )
                 }

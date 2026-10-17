@@ -32,8 +32,10 @@ internal data class RideDetailsUiState(
         fun from(
             liveRide: ActiveRide?,
             justCompleted: RideHistoryItem?,
-            selectedHistory: RideHistoryItem?
+            selectedHistory: RideHistoryItem?,
+            showSelectedHistory: Boolean = false
         ): RideDetailsUiState = when {
+            showSelectedHistory -> RideDetailsUiState(historyItem = selectedHistory)
             liveRide != null -> RideDetailsUiState(activeRide = liveRide)
             justCompleted != null -> RideDetailsUiState(historyItem = justCompleted, isReceipt = true)
             else -> RideDetailsUiState(historyItem = selectedHistory)

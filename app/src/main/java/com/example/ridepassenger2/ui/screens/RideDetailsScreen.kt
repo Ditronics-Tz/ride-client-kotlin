@@ -40,13 +40,17 @@ import org.osmdroid.util.GeoPoint
 private val RideError = Color(0xFFD92D20)
 
 @Composable
-fun RideDetailsScreen(onBack: () -> Unit = {}, onCancel: () -> Unit = {}) {
+fun RideDetailsScreen(
+    onBack: () -> Unit = {},
+    onCancel: () -> Unit = {},
+    showSelectedHistory: Boolean = false
+) {
     val liveRide by RideRepository.activeRide.collectAsState()
     val selected by RideRepository.selectedHistory.collectAsState()
     val justCompleted by RideRepository.lastCompleted.collectAsState()
     val snapshot by RideRepository.routeSnapshot.collectAsState()
     val driverPin by RideRepository.driverPin.collectAsState()
-    val ui = RideDetailsUiState.from(liveRide, justCompleted, selected)
+    val ui = RideDetailsUiState.from(liveRide, justCompleted, selected, showSelectedHistory)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val driverPhone = ui.activeRide?.driver?.phone?.filter { it.isDigit() || it == '+' }

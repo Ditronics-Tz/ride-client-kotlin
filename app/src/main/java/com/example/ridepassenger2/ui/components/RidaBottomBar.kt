@@ -15,14 +15,13 @@ private val BarInactive = Color(0xFF667085)
 
 /**
  * Dark bottom bar matching the home screen. Active tab is green.
- * Tabs: Home | Activity | Ride (center action) | Profile
+ * Tabs: Home | Activity | Profile
  */
 @Composable
 fun RidaBottomBar(
     selected: String,
     onHome: () -> Unit,
     onActivity: () -> Unit,
-    onCenter: () -> Unit,
     onProfile: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -62,18 +61,6 @@ fun RidaBottomBar(
             icon = {
                 RidaIcon(
                     icon = RidaIcons.History,
-                    contentDescription = null
-                )
-            },
-            colors = colors
-        )
-        NavigationBarItem(
-            selected = false,
-            onClick = onCenter,
-            label = { Text("Ride") },
-            icon = {
-                RidaIcon(
-                    icon = RidaIcons.Rides,
                     contentDescription = null
                 )
             },

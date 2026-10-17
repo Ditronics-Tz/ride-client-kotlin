@@ -49,6 +49,28 @@ class RideDetailsUiStateTest {
     }
 
     @Test
+    fun activitySelectionShowsChosenRideEvenWithAnActiveRideAndReceipt() {
+        val live = ActiveRide("live", RidePhase.SEARCHING, null, "Kariakoo", "Masaki", "TZS 9,000", "Standard", 5)
+        val selected = history("Ubungo → Airport")
+        val state = RideDetailsUiState.from(live, history(), selected, showSelectedHistory = true)
+
+        assertEquals(selected, state.historyItem)
+        assertEquals("Ubungo", state.pickup)
+        assertEquals("Airport", state.destination)
+        assertEquals(null, state.activeRide)
+        assertFalse(state.isReceipt)
+    }
+
+    @Test
+    fun activityDetailsWithoutSelectionDoesNotShowAnUnrelatedRide() {
+        val live = ActiveRide("live", RidePhase.SEARCHING, null, "Kariakoo", "Masaki", "TZS 9,000", "Standard", 5)
+        val state = RideDetailsUiState.from(live, history(), null, showSelectedHistory = true)
+
+        assertTrue(state.isEmpty)
+        assertFalse(state.isReceipt)
+    }
+
+    @Test
     fun missingRideProducesAnEmptyState() {
         val state = RideDetailsUiState.from(null, null, null)
 
