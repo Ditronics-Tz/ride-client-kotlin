@@ -45,6 +45,7 @@ import com.example.ridepassenger2.data.remote.NominatimPlace
 import com.example.ridepassenger2.data.remote.osrmCoords
 import com.example.ridepassenger2.ui.components.RidaIcon
 import com.example.ridepassenger2.ui.components.RidaIcons
+import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.map.RidaMapView
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -301,10 +302,7 @@ fun HomeMapScreen(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) { repeat(2) { Box(modifier = Modifier.width(4.dp).height(14.dp).clip(RoundedCornerShape(4.dp)).background(Mint)) } }
-                            Text(text = "Rida", color = DarkTitle, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                        }
+                        RidaLogo(green = Mint)
                         Box(
                             modifier = Modifier
                                 .size(32.dp)
