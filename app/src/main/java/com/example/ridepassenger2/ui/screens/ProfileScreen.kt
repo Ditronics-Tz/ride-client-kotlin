@@ -195,17 +195,17 @@ private fun ProfileScreenContent(
                     )
                     ProfileOptionDivider()
                     ProfileOptionRow(
+                        icon = RidaIcons.Promotions,
+                        title = "Promotions & discounts",
+                        subtitle = "Offers, promo codes and rewards",
+                        onClick = { onMenuClick("promotions") }
+                    )
+                    ProfileOptionDivider()
+                    ProfileOptionRow(
                         icon = RidaIcons.SavedPlace,
                         title = "Saved addresses",
                         subtitle = "Home, work and favourite places",
                         onClick = { onMenuClick("addresses") }
-                    )
-                    ProfileOptionDivider()
-                    ProfileOptionRow(
-                        icon = RidaIcons.Settings,
-                        title = "Ride preferences",
-                        subtitle = "Seat preferences and notifications",
-                        onClick = { onMenuClick("prefs") }
                     )
                 }
             }

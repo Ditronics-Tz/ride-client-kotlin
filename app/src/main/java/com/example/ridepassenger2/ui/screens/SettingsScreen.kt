@@ -30,7 +30,6 @@ fun SettingsScreen(
     onLogOut: () -> Unit = {},
     onCommunication: () -> Unit = {},
     onLanguage: () -> Unit = {},
-    onRidePreferences: () -> Unit = {},
     onCalendar: () -> Unit = {},
     onPrivacy: () -> Unit = {},
     onSignInSecurity: () -> Unit = {},
@@ -134,19 +133,6 @@ fun SettingsScreen(
                             title = "Language",
                             subtitle = "English",
                             onClick = onLanguage
-                        )
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            color = HelpCardBorder.copy(alpha = 0.65f)
-                        )
-
-                        // Ride preferences
-                        SettingsOptionRow(
-                            icon = RidaIcons.Rides,
-                            title = "Ride preferences",
-                            subtitle = "Customize your rides",
-                            onClick = onRidePreferences
                         )
 
                         HorizontalDivider(

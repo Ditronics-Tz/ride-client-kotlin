@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import com.example.ridepassenger2.data.local.AppPrefs
 import com.example.ridepassenger2.data.local.SessionManager
 import com.example.ridepassenger2.data.repository.ActiveRide
+import com.example.ridepassenger2.data.repository.NotificationRepository
 import com.example.ridepassenger2.data.repository.RidePhase
 import com.example.ridepassenger2.data.repository.RideRepository
 import com.example.ridepassenger2.data.remote.MapServiceFactory
@@ -109,6 +110,7 @@ private val DarCenter = GeoPoint(-6.7924, 39.2083)
 @Composable
 fun HomeMapScreen(
     onProfile: () -> Unit = {},
+    onNotification: () -> Unit = {},
     onRequestRide: () -> Unit = {},
     onSchedule: () -> Unit = {},
     onPackage: () -> Unit = {},
@@ -128,6 +130,7 @@ fun HomeMapScreen(
     val historyItems by RideRepository.history.collectAsState()
     val quotedFare by RideRepository.quoteTzs.collectAsState()
     val rideError by RideRepository.rideActionError.collectAsState()
+    val unreadCount by NotificationRepository.unreadCount.collectAsState()
     val scope = rememberCoroutineScope()
 
     // Saved passenger profile, including the uploaded avatar.
@@ -344,22 +347,44 @@ fun HomeMapScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         RidaLogo(green = Mint)
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.26f))
-                                .border(1.dp, Color.White.copy(alpha = 0.80f), CircleShape)
-                                .clickable(onClick = onProfile),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            UserAvatar(
-                                name = session.name,
-                                photoUrl = session.profilePictureUrl,
-                                modifier = Modifier.fillMaxSize(),
-                                contentDescription = "Profile",
-                                photoVersion = session.profilePictureVersion
-                            )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.26f))
+                                    .border(1.dp, Color.White.copy(alpha = 0.80f), CircleShape)
+                                    .clickable(onClick = onNotification),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                RidaIcon(RidaIcons.Notifications, contentDescription = "Notifications", modifier = Modifier.size(16.dp), tint = DarkTitle)
+                                if (unreadCount > 0) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(Mint)
+                                            .align(Alignment.TopEnd)
+                                    )
+                                }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.26f))
+                                    .border(1.dp, Color.White.copy(alpha = 0.80f), CircleShape)
+                                    .clickable(onClick = onProfile),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                UserAvatar(
+                                    name = session.name,
+                                    photoUrl = session.profilePictureUrl,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentDescription = "Profile",
+                                    photoVersion = session.profilePictureVersion
+                                )
+                            }
                         }
                     }
                     Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.40f)))

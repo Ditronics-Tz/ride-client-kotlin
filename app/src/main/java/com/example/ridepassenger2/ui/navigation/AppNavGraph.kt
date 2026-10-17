@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -28,6 +29,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.ridepassenger2.data.local.SessionManager
+import com.example.ridepassenger2.data.repository.NotificationRepository
 import com.example.ridepassenger2.data.repository.RideRepository
 import com.example.ridepassenger2.ui.components.RidaBottomBar
 import com.example.ridepassenger2.ui.screens.*
@@ -51,7 +53,6 @@ object Routes {
     const val PACKAGE = "package"
     const val SAFETY = "safety"
     const val PERSONAL_INFO = "personal_info"
-    const val RIDE_PREFS = "ride_prefs"
     const val HELP_FAQ = "help_faq"
     const val CONTACT_US = "contact_us"
     const val TRIP_HELP = "trip_help"
@@ -61,6 +62,9 @@ object Routes {
     const val HELP_HUB = "help_hub"
     const val HELP_ARTICLES = "help_articles"
     const val ACCOUNT = "account"
+    const val PROMOTION_DETAILS = "promotion_details"
+    const val INBOX = "inbox"
+    const val NOTIFICATIONS = INBOX
     // New flow graphs (existing routes untouched)
     const val PAY_FLOW = "pay_flow"
     const val PAY_HISTORY = "pay_history"
@@ -99,6 +103,13 @@ fun AppNavGraph(
                 isAppearanceLightStatusBars = !usesThemeBackground || themeIsLight
                 isAppearanceLightNavigationBars = !usesThemeBackground || themeIsLight
             }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        NotificationRepository.startLongPolling(context, ioScope)
+        onDispose {
+            NotificationRepository.stopLongPolling()
         }
     }
 
@@ -225,11 +236,23 @@ fun AppNavGraph(
                 composable(Routes.HOME_MAP) {
                     HomeMapScreen(
                         onProfile = { navigateBottomBar(Routes.PROFILE) },
+                        onNotification = { navController.navigate(Routes.INBOX) },
                         onRequestRide = { navController.navigate(Routes.RIDE_DETAILS) },
                         onSchedule = { navController.navigate(Routes.SCHEDULE) },
                         onPackage = { navController.navigate(Routes.PACKAGE) },
                         onSavedPlaces = { navController.navigate(Routes.SAVED_PLACES) },
                         onPayment = { navController.navigate(Routes.PAYMENT) }
+                    )
+                }
+                composable(Routes.INBOX) {
+                    NotificationsScreen(
+                        onBack = { navController.popBackStack() },
+                        onNavigateToPromo = { code ->
+                            navController.navigate("${Routes.PROMOTION_DETAILS}?code=$code")
+                        },
+                        onNavigateToRide = { rideId ->
+                            navController.navigate(Routes.RIDE_DETAILS)
+                        }
                     )
                 }
                 composable(
@@ -261,8 +284,8 @@ fun AppNavGraph(
                                 when (key) {
                                     "personal" -> navController.navigate(Routes.PERSONAL_INFO)
                                     "payment" -> navController.navigate(Routes.PAYMENT)
+                                    "promotions" -> navController.navigate(Routes.PROMOTION_DETAILS)
                                     "addresses" -> navController.navigate(Routes.SAVED_PLACES)
-                                    "prefs" -> navController.navigate(Routes.RIDE_PREFS)
                                     "support" -> navController.navigate(Routes.HELP_HUB)
                                     "safety" -> navController.navigate(Routes.SAFETY)
                                     else -> navController.navigate(Routes.SETTINGS)
@@ -276,9 +299,8 @@ fun AppNavGraph(
                     SettingsScreen(
                         onBack = { navController.popBackStack() },
                         onLogOut = { logOut() },
-                        onCommunication = { navController.navigate(Routes.RIDE_PREFS) },
+                        onCommunication = {},
                         onLanguage = {},
-                        onRidePreferences = { navController.navigate(Routes.RIDE_PREFS) },
                         onCalendar = { navController.navigate(Routes.SCHEDULE) },
                         onPrivacy = { navController.navigate(Routes.SAFETY) },
                         onSignInSecurity = { navController.navigate(Routes.PERSONAL_INFO) },
@@ -306,7 +328,21 @@ fun AppNavGraph(
                 }
                 composable(Routes.SAFETY) { SafetyScreen(onBack = { navController.popBackStack() }) }
                 composable(Routes.PERSONAL_INFO) { PersonalInfoScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.RIDE_PREFS) { RidePreferencesScreen(onBack = { navController.popBackStack() }) }
+                composable(
+                    route = "${Routes.PROMOTION_DETAILS}?code={code}",
+                    arguments = listOf(navArgument("code") {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    })
+                ) { backStackEntry ->
+                    val code = backStackEntry.arguments?.getString("code")
+                    PromotionDetailsScreen(
+                        initialCode = code,
+                        onBack = { navController.popBackStack() },
+                        onApply = { navController.popBackStack() }
+                    )
+                }
                 composable(Routes.HELP_FAQ) { HelpFaqScreen(onBack = { navController.popBackStack() }) }
                 composable(Routes.CONTACT_US) { ContactUsScreen(onBack = { navController.popBackStack() }) }
                 composable(Routes.TRIP_HELP) {

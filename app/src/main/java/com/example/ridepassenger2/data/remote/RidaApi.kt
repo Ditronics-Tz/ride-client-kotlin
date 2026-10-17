@@ -233,6 +233,7 @@ interface RidaApi {
 
     @GET("promos/available")
     suspend fun getAvailablePromos(
+        @Query("fare") fare: Long? = null,
         @Query("limit") limit: Int = 50,
         @Query("offset") offset: Int = 0
     ): PromoListResponse
@@ -245,6 +246,27 @@ interface RidaApi {
 
     @POST("referral/apply")
     suspend fun applyReferral(@Body request: ApplyReferralRequest): Map<String, Any>
+
+    // ---------------------------------------------------------------------------
+    // Notifications & Inbox
+    // ---------------------------------------------------------------------------
+
+    @GET("passenger/notifications")
+    suspend fun getInbox(
+        @Query("limit") limit: Int = 20,
+        @Query("offset") offset: Int = 0
+    ): InboxPage
+
+    @GET("passenger/notifications/updates")
+    suspend fun getInboxUpdates(
+        @Query("after") after: String? = null
+    ): InboxUpdate
+
+    @POST("passenger/notifications/{id}/read")
+    suspend fun markNotificationRead(@Path("id") id: String): Response<Unit>
+
+    @POST("passenger/notifications/read-all")
+    suspend fun markAllNotificationsRead(): Response<Unit>
 
     // ---------------------------------------------------------------------------
     // Account Privacy

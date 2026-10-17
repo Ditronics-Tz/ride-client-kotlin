@@ -18,6 +18,7 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 object RidaApiClient {
 
@@ -120,6 +121,9 @@ object RidaApiClient {
 
     private val okHttpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(35, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
             .addInterceptor(headersInterceptor)
             .addInterceptor(loggingInterceptor)
             .authenticator(tokenAuthenticator)

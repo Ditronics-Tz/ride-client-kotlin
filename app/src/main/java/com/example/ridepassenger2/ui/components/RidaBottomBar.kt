@@ -8,13 +8,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 
-// Dark bar — locked to the home palette
 private val BarBg = Color.White
-private val BarGreen = Color(0xFF00C878)
+private val BarGreen = Color(0xFF008F64)
 private val BarInactive = Color(0xFF667085)
 
 /**
- * Dark bottom bar matching the home screen. Active tab is green.
+ * Bottom navigation bar matching the app theme. Active tab is brand green (#008F64).
  * Tabs: Home | Activity | Profile
  */
 @Composable
@@ -33,7 +32,7 @@ fun RidaBottomBar(
     val colors = NavigationBarItemDefaults.colors(
         selectedIconColor = BarGreen,
         selectedTextColor = BarGreen,
-        indicatorColor = BarGreen.copy(alpha = 0.14f),
+        indicatorColor = BarGreen.copy(alpha = 0.12f),
         unselectedIconColor = BarInactive,
         unselectedTextColor = BarInactive
     )
@@ -49,7 +48,7 @@ fun RidaBottomBar(
             icon = {
                 RidaIcon(
                     icon = RidaIcons.Home,
-                    contentDescription = null
+                    contentDescription = "Home"
                 )
             },
             colors = colors
@@ -61,7 +60,7 @@ fun RidaBottomBar(
             icon = {
                 RidaIcon(
                     icon = RidaIcons.History,
-                    contentDescription = null
+                    contentDescription = "Activity"
                 )
             },
             colors = colors
@@ -73,7 +72,7 @@ fun RidaBottomBar(
             icon = {
                 RidaIcon(
                     icon = RidaIcons.Account,
-                    contentDescription = null
+                    contentDescription = "Profile"
                 )
             },
             colors = colors

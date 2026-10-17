@@ -355,29 +355,94 @@ data class ShareLinkResponse(
 
 @JsonClass(generateAdapter = false)
 data class PromoOfferDto(
+    val id: String? = null,
     val code: String,
-    val description: String,
+    val title: String? = null,
+    val description: String = "",
+    @param:Json(name = "discount_type") val discountType: String? = null,
+    @param:Json(name = "discount_value") val discountValue: Long? = null,
     @param:Json(name = "discount_percent") val discountPercent: Int? = null,
     @param:Json(name = "discount_tzs") val discountTzs: Long? = null,
-    @param:Json(name = "expires_at") val expiresAt: String? = null
+    @param:Json(name = "max_discount") val maxDiscount: Long? = null,
+    @param:Json(name = "min_fare") val minFare: Long? = null,
+    val audience: String? = null,
+    @param:Json(name = "first_ride_only") val firstRideOnly: Boolean? = null,
+    @param:Json(name = "starts_at") val startsAt: String? = null,
+    @param:Json(name = "expires_at") val expiresAt: String? = null,
+    @param:Json(name = "max_redemptions") val maxRedemptions: Int? = null,
+    @param:Json(name = "max_per_user") val maxPerUser: Int? = null,
+    @param:Json(name = "redeemed_count") val redeemedCount: Int? = null,
+    val status: String? = null,
+    @param:Json(name = "effective_status") val effectiveStatus: String? = null,
+    @param:Json(name = "discount_amount") val discountAmount: Long? = null,
+    @param:Json(name = "final_fare") val finalFare: Long? = null
 )
 
 @JsonClass(generateAdapter = false)
 data class PromoListResponse(
-    val promos: List<PromoOfferDto> = emptyList()
+    val promos: List<PromoOfferDto> = emptyList(),
+    val total: Int = 0,
+    val limit: Int = 50,
+    val offset: Int = 0
+)
+
+@JsonClass(generateAdapter = false)
+data class PromoSummary(
+    val code: String,
+    val title: String? = null
 )
 
 @JsonClass(generateAdapter = false)
 data class ValidatePromoRequest(
-    val code: String
+    val code: String,
+    val fare: Long
 )
 
 @JsonClass(generateAdapter = false)
 data class PromoValidationResponse(
-    val valid: Boolean,
-    val code: String,
-    @param:Json(name = "discount_amount") val discountAmount: Long? = 0,
-    val message: String? = null
+    val valid: Boolean = false,
+    val code: String? = null,
+    @param:Json(name = "discount_amount") val discountAmount: Long = 0,
+    @param:Json(name = "final_fare") val finalFare: Long = 0,
+    val promo: PromoOfferDto? = null,
+    val message: String? = null,
+    val error: String? = null,
+    val fields: Map<String, String>? = null
+)
+
+// ---------------------------------------------------------------------------
+// Passenger Notifications & Inbox
+// ---------------------------------------------------------------------------
+
+@JsonClass(generateAdapter = false)
+data class InboxItem(
+    val id: String,
+    val kind: String = "system",
+    val title: String = "",
+    val body: String = "",
+    val data: Map<String, String> = emptyMap(),
+    @param:Json(name = "read_at") val readAt: String? = null,
+    @param:Json(name = "created_at") val createdAt: String? = null
+) {
+    val isRead: Boolean get() = !readAt.isNullOrBlank()
+    val promoId: String? get() = data["promo_id"]
+    val promoCode: String? get() = data["code"]
+    val rideId: String? get() = data["ride_id"]
+}
+
+@JsonClass(generateAdapter = false)
+data class InboxPage(
+    val notifications: List<InboxItem> = emptyList(),
+    val total: Long = 0,
+    @param:Json(name = "unread_count") val unreadCount: Long = 0,
+    val limit: Int = 20,
+    val offset: Int = 0
+)
+
+@JsonClass(generateAdapter = false)
+data class InboxUpdate(
+    val changed: Boolean = false,
+    @param:Json(name = "latest_id") val latestId: String? = null
 )
 
 @JsonClass(generateAdapter = false)

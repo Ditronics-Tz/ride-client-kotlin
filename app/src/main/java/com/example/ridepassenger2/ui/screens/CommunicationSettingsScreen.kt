@@ -3,30 +3,12 @@ package com.example.ridepassenger2.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,11 +17,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ridepassenger2.data.remote.RidaApiClient
 import com.example.ridepassenger2.ui.components.HomeIndicator
 import com.example.ridepassenger2.ui.components.RidaIcon
 import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
+import kotlinx.coroutines.launch
 
 private val PageBg = Color(0xFFF5F8F6)
 private val CardBg = Color.White
@@ -53,12 +37,42 @@ private val LightMint = Color(0xFFE8F7F0)
 fun CommunicationSettingsScreen(
     onBack: () -> Unit = {}
 ) {
+    val scope = rememberCoroutineScope()
+
     var rideUpdates by remember { mutableStateOf(true) }
     var tripMessages by remember { mutableStateOf(true) }
-    var offersPromotions by remember { mutableStateOf(false) }
+    var offersPromotions by remember { mutableStateOf(true) }
     var pushNotifications by remember { mutableStateOf(true) }
     var emailUpdates by remember { mutableStateOf(false) }
     var smsUpdates by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val prefs = RidaApiClient.api.getPreferences()
+            rideUpdates = prefs.rideUpdates ?: true
+            tripMessages = prefs.tripMessages ?: true
+            offersPromotions = prefs.promotions ?: true
+            pushNotifications = prefs.pushEnabled ?: true
+            emailUpdates = prefs.emailEnabled ?: false
+            smsUpdates = prefs.smsEnabled ?: true
+        } catch (_: Exception) { }
+    }
+
+    fun syncPreferences() {
+        scope.launch {
+            try {
+                val updateMap = mapOf(
+                    "ride_updates" to rideUpdates,
+                    "trip_messages" to tripMessages,
+                    "promotions" to offersPromotions,
+                    "push_enabled" to pushNotifications,
+                    "email_enabled" to emailUpdates,
+                    "sms_enabled" to smsUpdates
+                )
+                RidaApiClient.api.updatePreferences(updateMap)
+            } catch (_: Exception) { }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -135,7 +149,10 @@ fun CommunicationSettingsScreen(
                     title = "Ride updates",
                     subtitle = "Driver assignment and arrival alerts",
                     checked = rideUpdates,
-                    onCheckedChange = { rideUpdates = it }
+                    onCheckedChange = {
+                        rideUpdates = it
+                        syncPreferences()
+                    }
                 )
 
                 Spacer(Modifier.height(10.dp))
@@ -145,7 +162,10 @@ fun CommunicationSettingsScreen(
                     title = "Trip messages",
                     subtitle = "Driver and support messages",
                     checked = tripMessages,
-                    onCheckedChange = { tripMessages = it }
+                    onCheckedChange = {
+                        tripMessages = it
+                        syncPreferences()
+                    }
                 )
 
                 Spacer(Modifier.height(24.dp))
@@ -165,7 +185,10 @@ fun CommunicationSettingsScreen(
                     title = "Offers and promotions",
                     subtitle = "Discounts and occasional updates",
                     checked = offersPromotions,
-                    onCheckedChange = { offersPromotions = it }
+                    onCheckedChange = {
+                        offersPromotions = it
+                        syncPreferences()
+                    }
                 )
 
                 Spacer(Modifier.height(24.dp))
@@ -188,11 +211,20 @@ fun CommunicationSettingsScreen(
                         .border(1.dp, CardBorder, RoundedCornerShape(20.dp))
                         .padding(horizontal = 18.dp, vertical = 4.dp)
                 ) {
-                    SimpleChannelRow("Push notifications", pushNotifications) { pushNotifications = it }
+                    SimpleChannelRow("Push notifications", pushNotifications) {
+                        pushNotifications = it
+                        syncPreferences()
+                    }
                     HorizontalDivider(color = CardBorder, thickness = 1.dp)
-                    SimpleChannelRow("Email updates", emailUpdates) { emailUpdates = it }
+                    SimpleChannelRow("Email updates", emailUpdates) {
+                        emailUpdates = it
+                        syncPreferences()
+                    }
                     HorizontalDivider(color = CardBorder, thickness = 1.dp)
-                    SimpleChannelRow("SMS updates", smsUpdates) { smsUpdates = it }
+                    SimpleChannelRow("SMS updates", smsUpdates) {
+                        smsUpdates = it
+                        syncPreferences()
+                    }
                 }
 
                 Spacer(Modifier.height(28.dp))
