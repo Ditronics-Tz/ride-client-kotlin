@@ -939,6 +939,7 @@ fun PersonalInfoScreen(onBack: () -> Unit = {}) {
     var phoneLoading by remember { mutableStateOf(false) }
 
     AliveScaffold(title = "Personal Information", onBack = onBack) {
+        com.example.ridepassenger2.ui.components.ProfilePhotoEditor()
         Text("Your profile details", fontSize = 14.sp, color = XMuted)
         Spacer(Modifier.height(16.dp))
 
