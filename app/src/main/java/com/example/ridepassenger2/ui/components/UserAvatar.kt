@@ -29,18 +29,9 @@ import com.example.ridepassenger2.data.remote.RidaApiClient
 import com.example.ridepassenger2.data.repository.ProfilePhotoContract
 import java.io.ByteArrayInputStream
 import java.nio.ByteBuffer
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
-
-private val avatarClient = OkHttpClient.Builder()
-    .connectTimeout(10, TimeUnit.SECONDS)
-    .readTimeout(15, TimeUnit.SECONDS)
-    .followSslRedirects(false)
-    .build()
 
 /** Displays a saved profile photo, with initials as a loading/error fallback. */
 @Composable
@@ -49,7 +40,8 @@ fun UserAvatar(
     photoUrl: String?,
     modifier: Modifier = Modifier,
     contentDescription: String? = null,
-    photoVersion: Long = 0
+    photoVersion: Long = 0,
+    contentScale: ContentScale = ContentScale.Crop
 ) {
     val preview = LocalInspectionMode.current
     val bitmap by produceState<Bitmap?>(null, photoUrl, preview, photoVersion) {
@@ -58,7 +50,7 @@ fun UserAvatar(
         if (preview || url == null) return@produceState
         value = withContext(Dispatchers.IO) {
             try {
-                avatarClient.newCall(Request.Builder().url(url).build()).execute().use { response ->
+                RidaApiClient.profilePhotoCall(url).execute().use { response ->
                     if (!response.isSuccessful) return@withContext null
                     val bytes = response.body?.byteStream()?.use(ProfilePhotoContract::readBytes)
                         ?: return@withContext null
@@ -74,14 +66,14 @@ fun UserAvatar(
     val initials = name.trim().split(Regex("\\s+")).filter(String::isNotBlank).take(2)
         .joinToString("") { it.first().uppercase() }
     Box(
-        modifier = modifier.clip(CircleShape).background(Color.Black.copy(alpha = 0.06f)),
+        modifier = modifier.clip(CircleShape).background(Color(0xFFECF8F0)),
         contentAlignment = Alignment.Center
     ) {
         val image = bitmap
         when {
             image != null -> Image(
                 bitmap = image.asImageBitmap(), contentDescription = contentDescription,
-                contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()
+                contentScale = contentScale, modifier = Modifier.fillMaxSize()
             )
             initials.isNotEmpty() -> Text(initials, style = MaterialTheme.typography.labelLarge, color = Color.Black)
             else -> RidaIcon(RidaIcons.Account, contentDescription, Modifier.size(24.dp), tint = Color.Black)

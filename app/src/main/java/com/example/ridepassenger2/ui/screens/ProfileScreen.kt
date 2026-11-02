@@ -1,12 +1,8 @@
 package com.example.ridepassenger2.ui.screens
 
-import android.net.Uri
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,46 +24,33 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.ridepassenger2.data.local.SessionManager
 import com.example.ridepassenger2.data.repository.RideRepository
 import com.example.ridepassenger2.data.repository.UserRepository
-import com.example.ridepassenger2.data.repository.ProfilePhotoRepository
 import com.example.ridepassenger2.ui.components.RidaIcon
 import com.example.ridepassenger2.ui.components.RidaIcons
+import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.components.UserAvatar
 import com.example.ridepassenger2.ui.theme.RidaLightTheme
-import kotlinx.coroutines.launch
 
 @Composable
 fun ProfileScreen(
@@ -78,30 +61,6 @@ fun ProfileScreen(
     val context = LocalContext.current
     val session by SessionManager.observe(context).collectAsState(initial = SessionManager.Session())
     val trips by RideRepository.history.collectAsState()
-    val scope = rememberCoroutineScope()
-    var uploadingPhoto by remember { mutableStateOf(false) }
-    var photoError by remember { mutableStateOf<String?>(null) }
-    var lastPhoto by remember { mutableStateOf<Uri?>(null) }
-
-    fun uploadPhoto(uri: Uri) {
-        if (uploadingPhoto) return
-        lastPhoto = uri
-        photoError = null
-        uploadingPhoto = true
-        scope.launch {
-            try {
-                ProfilePhotoRepository.upload(context, uri)
-                    .onSuccess { Toast.makeText(context, "Profile photo updated", Toast.LENGTH_SHORT).show() }
-                    .onFailure { photoError = it.message }
-            } finally {
-                uploadingPhoto = false
-            }
-        }
-    }
-
-    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) uploadPhoto(uri)
-    }
 
     LaunchedEffect(Unit) {
         UserRepository.refreshSessionFromApi(context)
@@ -112,10 +71,6 @@ fun ProfileScreen(
         session = session,
         rideCount = trips.size,
         sharedRideCount = trips.count { it.isShared },
-        uploadingPhoto = uploadingPhoto,
-        photoError = photoError,
-        onChoosePhoto = { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-        onRetryPhoto = { lastPhoto?.let { uploadPhoto(it) } },
         onSettings = onSettings,
         onMenuClick = onMenuClick,
         onLogOut = onLogOut
@@ -127,10 +82,6 @@ private fun ProfileScreenContent(
     session: SessionManager.Session,
     rideCount: Int,
     sharedRideCount: Int,
-    uploadingPhoto: Boolean = false,
-    photoError: String? = null,
-    onChoosePhoto: () -> Unit = {},
-    onRetryPhoto: () -> Unit = {},
     onSettings: () -> Unit = {},
     onMenuClick: (String) -> Unit = {},
     onLogOut: () -> Unit = {}
@@ -147,23 +98,17 @@ private fun ProfileScreenContent(
             modifier = Modifier
                 .widthIn(max = 600.dp)
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp),
+                .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "Profile",
                 style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Bold,
                 color = HelpTitleText,
                 modifier = Modifier.weight(1f)
             )
-            IconButton(onClick = onSettings, modifier = Modifier.size(48.dp)) {
-                RidaIcon(
-                    icon = RidaIcons.Settings,
-                    contentDescription = "Settings",
-                    tint = HelpTitleText,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+            RidaLogo(green = HelpGreen)
         }
 
         LazyColumn(
@@ -171,11 +116,16 @@ private fun ProfileScreenContent(
                 .widthIn(max = 600.dp)
                 .fillMaxWidth()
                 .weight(1f),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             item(key = "overview") {
-                ProfileOverview(session, rideCount, sharedRideCount, uploadingPhoto, photoError, onChoosePhoto, onRetryPhoto)
+                ProfileOverview(
+                    session = session,
+                    rideCount = rideCount,
+                    sharedRideCount = sharedRideCount,
+                    onOpenPersonalInfo = { onMenuClick("personal") }
+                )
             }
 
             item(key = "preferences") {
@@ -207,6 +157,16 @@ private fun ProfileScreenContent(
                         subtitle = "Home, work and favourite places",
                         onClick = { onMenuClick("addresses") }
                     )
+                    ProfileOptionDivider()
+                    ProfileOptionRow(
+                        icon = RidaIcons.Settings,
+                        title = "Preferences",
+                        subtitle = "Language, notifications and privacy",
+                        onClick = {
+                            onMenuClick("preferences")
+                            onSettings()
+                        }
+                    )
                 }
             }
 
@@ -231,18 +191,29 @@ private fun ProfileScreenContent(
             item(key = "logout") {
                 OutlinedButton(
                     onClick = onLogOut,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, HelpCardBorder),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 52.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(1.dp, Color(0xFFFDA29B).copy(alpha = 0.8f)),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color.White,
+                        containerColor = Color(0xFFFFF1F0),
                         contentColor = Color(0xFFD92D20)
                     ),
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp)
                 ) {
-                    RidaIcon(RidaIcons.Logout, contentDescription = null, modifier = Modifier.size(20.dp))
+                    RidaIcon(
+                        icon = RidaIcons.Logout,
+                        contentDescription = null,
+                        tint = Color(0xFFD92D20),
+                        modifier = Modifier.size(20.dp)
+                    )
                     Spacer(Modifier.width(10.dp))
-                    Text("Log out", style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        text = "Log out",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         }
@@ -251,17 +222,19 @@ private fun ProfileScreenContent(
 
 @Composable
 private fun ProfileMenuSection(title: String, content: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
             color = HelpTitleText,
             modifier = Modifier.padding(horizontal = 4.dp)
         )
         Surface(
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(24.dp),
             color = Color.White,
             border = BorderStroke(1.dp, HelpCardBorder),
+            shadowElevation = 1.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column { content() }
@@ -274,150 +247,244 @@ private fun ProfileOverview(
     session: SessionManager.Session,
     rideCount: Int,
     sharedRideCount: Int,
-    uploadingPhoto: Boolean,
-    photoError: String?,
-    onChoosePhoto: () -> Unit,
-    onRetryPhoto: () -> Unit
+    onOpenPersonalInfo: () -> Unit = {}
 ) {
+    val isProfileIncomplete = session.name.isBlank() || session.email.isBlank() || session.phone.isBlank()
+
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(22.dp),
         color = Color.White,
         border = BorderStroke(1.dp, HelpCardBorder),
-        modifier = Modifier.fillMaxWidth()
+        shadowElevation = 2.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClickLabel = "Edit personal information", onClick = onOpenPersonalInfo)
     ) {
         Column {
             Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 20.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Box(
-                    modifier = Modifier.size(64.dp)
-                        .clickable(enabled = !uploadingPhoto, role = Role.Button, onClickLabel = "Change profile photo", onClick = onChoosePhoto)
+                    modifier = Modifier.size(56.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    UserAvatar(session.name, session.profilePictureUrl, Modifier.fillMaxSize(), "Profile photo", session.profilePictureVersion)
-                    if (uploadingPhoto) {
-                        Box(Modifier.fillMaxSize().clip(CircleShape).background(Color.White.copy(alpha = 0.75f)), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.Black, strokeWidth = 2.dp)
-                        }
-                    } else {
-                        Surface(modifier = Modifier.size(24.dp).align(Alignment.BottomEnd), shape = CircleShape, color = Color.Black) {
-                            Box(contentAlignment = Alignment.Center) {
-                                RidaIcon(RidaIcons.Upload, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
-                            }
-                        }
+                    Surface(
+                        shape = CircleShape,
+                        border = BorderStroke(2.dp, Color.White),
+                        shadowElevation = 2.dp,
+                        color = Color.Transparent,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        UserAvatar(
+                            name = session.name,
+                            photoUrl = session.profilePictureUrl,
+                            modifier = Modifier.fillMaxSize(),
+                            contentDescription = "Profile photo",
+                            photoVersion = session.profilePictureVersion,
+                            contentScale = ContentScale.Fit
+                        )
                     }
                 }
+
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
                         text = session.name.ifBlank { "Name not added" },
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
                         color = HelpTitleText,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = session.email.ifBlank { "Email not added" },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = HelpMutedText,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = session.phone.ifBlank { "Phone not added" },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = HelpMutedText,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+                    ProfileContactDetail(RidaIcons.Mail, session.email.ifBlank { "Email not added" })
+                    ProfileContactDetail(RidaIcons.Phone, session.phone.ifBlank { "Phone not added" })
+                }
+
+                Box(
+                    modifier = Modifier
+                        .size(30.dp)
+                        .background(Color(0xFFECF8F0), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    RidaIcon(
+                        icon = RidaIcons.Edit,
+                        contentDescription = null,
+                        tint = HelpGreen,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
 
-            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)) {
-                TextButton(onClick = onChoosePhoto, enabled = !uploadingPhoto) {
-                    Text(
-                        text = if (uploadingPhoto) "Uploading photo…" else if (session.profilePictureUrl.isNullOrBlank()) "Upload photo" else "Change photo",
-                        color = Color.Black
+            if (isProfileIncomplete) {
+                HorizontalDivider(color = HelpCardBorder.copy(alpha = 0.7f))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    RidaIcon(
+                        icon = RidaIcons.Info,
+                        contentDescription = null,
+                        tint = HelpGreen,
+                        modifier = Modifier.size(15.dp)
                     )
-                }
-                Text("JPG, PNG or WebP, up to 5 MB", style = MaterialTheme.typography.bodySmall, color = HelpMutedText)
-                if (photoError != null) {
                     Text(
-                        photoError, style = MaterialTheme.typography.bodySmall, color = Color(0xFFB42318),
-                        modifier = Modifier.padding(top = 8.dp).semantics { liveRegion = LiveRegionMode.Polite }
+                        text = "Complete your profile",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = HelpGreen
                     )
-                    TextButton(onClick = onRetryPhoto, enabled = !uploadingPhoto) { Text("Retry upload", color = Color.Black) }
                 }
             }
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = HelpCardBorder)
+
+            HorizontalDivider(color = HelpCardBorder.copy(alpha = 0.7f))
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.Top
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                ProfileStat(rideCount.toString(), "Rides taken", Modifier.weight(1f))
-                VerticalDivider(modifier = Modifier.height(36.dp).align(Alignment.CenterVertically), color = HelpCardBorder)
-                ProfileStat(sharedRideCount.toString(), "Rides shared", Modifier.weight(1f))
+                ProfileStatCard(
+                    icon = RidaIcons.Rides,
+                    value = rideCount.toString(),
+                    label = "Rides taken",
+                    modifier = Modifier.weight(1f)
+                )
+                Box(Modifier.width(1.dp).height(32.dp).background(HelpCardBorder))
+                ProfileStatCard(
+                    icon = RidaIcons.Share,
+                    value = sharedRideCount.toString(),
+                    label = "Rides shared",
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
 }
 
 @Composable
-private fun ProfileStat(value: String, label: String, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.padding(horizontal = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+private fun ProfileContactDetail(icon: Int, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp)
     ) {
+        RidaIcon(icon, contentDescription = null, tint = HelpGreen, modifier = Modifier.size(12.dp))
         Text(
             text = value,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = HelpTitleText,
-            textAlign = TextAlign.Center
+            style = MaterialTheme.typography.bodySmall,
+            color = Color(0xFF436858),
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = HelpMutedText,
-            textAlign = TextAlign.Center
-        )
+    }
+}
+
+@Composable
+private fun ProfileStatCard(
+    icon: Int,
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(1.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            RidaIcon(icon, contentDescription = null, tint = HelpGreen, modifier = Modifier.size(15.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = HelpTitleText,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color(0xFF436858))
     }
 }
 
 @Composable
 private fun ProfileOptionDivider() {
     HorizontalDivider(
-        modifier = Modifier.padding(start = 54.dp, end = 16.dp),
-        color = HelpCardBorder.copy(alpha = 0.65f)
+        modifier = Modifier.padding(start = 72.dp, end = 16.dp),
+        color = HelpCardBorder.copy(alpha = 0.5f)
     )
 }
 
 @Composable
-private fun ProfileOptionRow(icon: Int, title: String, subtitle: String, onClick: () -> Unit) {
+private fun ProfileOptionRow(
+    icon: Int,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 76.dp)
+            .heightIn(min = 72.dp)
             .clickable(role = Role.Button, onClickLabel = title, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        RidaIcon(icon, contentDescription = null, tint = HelpGreen, modifier = Modifier.size(24.dp))
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = HelpTitleText)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = HelpMutedText)
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .background(HelpGreen.copy(alpha = 0.08f), RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            RidaIcon(
+                icon = icon,
+                contentDescription = null,
+                tint = HelpGreen,
+                modifier = Modifier.size(22.dp)
+            )
         }
-        RidaIcon(
-            icon = RidaIcons.ChevronRight,
-            contentDescription = null,
-            tint = HelpMutedText,
-            modifier = Modifier.size(18.dp)
-        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = HelpTitleText
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = HelpMutedText
+            )
+        }
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .background(Color(0xFFF2F4F7), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            RidaIcon(
+                icon = RidaIcons.ChevronRight,
+                contentDescription = null,
+                tint = HelpMutedText,
+                modifier = Modifier.size(16.dp)
+            )
+        }
     }
 }
 

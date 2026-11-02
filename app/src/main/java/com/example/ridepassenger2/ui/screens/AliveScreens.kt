@@ -1,7 +1,12 @@
 package com.example.ridepassenger2.ui.screens
 
 import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,13 +30,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,8 +53,13 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,14 +67,15 @@ import androidx.core.net.toUri
 import com.example.ridepassenger2.data.local.AppPrefs
 import com.example.ridepassenger2.data.local.AuthValidation
 import com.example.ridepassenger2.data.local.SessionManager
+import com.example.ridepassenger2.data.remote.RidaApiClient
+import com.example.ridepassenger2.data.repository.ProfilePhotoRepository
 import com.example.ridepassenger2.data.repository.RideRepository
 import com.example.ridepassenger2.data.repository.UserRepository
-import com.example.ridepassenger2.data.remote.RidaApiClient
-import androidx.compose.runtime.LaunchedEffect
 import com.example.ridepassenger2.ui.components.HomeIndicator
 import com.example.ridepassenger2.ui.components.RidaIcon
 import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.components.RidaLogo
+import com.example.ridepassenger2.ui.components.UserAvatar
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 import kotlinx.coroutines.launch
 
@@ -927,6 +941,35 @@ fun PersonalInfoScreen(onBack: () -> Unit = {}) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val session by SessionManager.observe(context).collectAsState(initial = SessionManager.Session())
+
+    var uploadingPhoto by remember { mutableStateOf(false) }
+    var photoError by remember { mutableStateOf<String?>(null) }
+    var lastPhotoUri by remember { mutableStateOf<Uri?>(null) }
+
+    fun uploadPhoto(uri: Uri) {
+        if (uploadingPhoto) return
+        lastPhotoUri = uri
+        photoError = null
+        uploadingPhoto = true
+        scope.launch {
+            try {
+                ProfilePhotoRepository.upload(context, uri)
+                    .onSuccess {
+                        Toast.makeText(context, "Profile photo updated", Toast.LENGTH_SHORT).show()
+                    }
+                    .onFailure { error ->
+                        photoError = error.message ?: "Could not upload photo. Try again."
+                    }
+            } finally {
+                uploadingPhoto = false
+            }
+        }
+    }
+
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) uploadPhoto(uri)
+    }
+
     var name by remember(session.name) { mutableStateOf(session.name) }
     var editingName by remember { mutableStateOf(session.name.isNotBlank()) }
     var nameError by remember { mutableStateOf<String?>(null) }
@@ -939,8 +982,149 @@ fun PersonalInfoScreen(onBack: () -> Unit = {}) {
     var phoneLoading by remember { mutableStateOf(false) }
 
     AliveScaffold(title = "Personal Information", onBack = onBack) {
-        Text("Your profile details", fontSize = 14.sp, color = XMuted)
+        Text("Your profile details and photo", fontSize = 14.sp, color = XMuted)
         Spacer(Modifier.height(16.dp))
+
+        // Profile Photo & Overview Card
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = XCard,
+            border = BorderStroke(1.dp, XBorder),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clickable(
+                                enabled = !uploadingPhoto,
+                                role = Role.Button,
+                                onClickLabel = "Change profile photo",
+                                onClick = {
+                                    photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                }
+                            )
+                    ) {
+                        UserAvatar(
+                            name = session.name,
+                            photoUrl = session.profilePictureUrl,
+                            modifier = Modifier.fillMaxSize(),
+                            contentDescription = "Profile photo",
+                            photoVersion = session.profilePictureVersion
+                        )
+                        if (uploadingPhoto) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.75f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(26.dp),
+                                    color = Color.Black,
+                                    strokeWidth = 2.5.dp
+                                )
+                            }
+                        } else {
+                            Surface(
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .align(Alignment.BottomEnd),
+                                shape = CircleShape,
+                                color = Color.Black
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    RidaIcon(
+                                        RidaIcons.Upload,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = Color.White
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = session.name.ifBlank { "Name not added" },
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = XTitle,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = session.email.ifBlank { "Email not added" },
+                            fontSize = 13.sp,
+                            color = XMuted,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = session.phone.ifBlank { "Phone not added" },
+                            fontSize = 12.5.sp,
+                            color = XMuted,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    TextButton(
+                        onClick = {
+                            photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        },
+                        enabled = !uploadingPhoto
+                    ) {
+                        Text(
+                            text = if (uploadingPhoto) "Uploading photo…"
+                            else if (session.profilePictureUrl.isNullOrBlank()) "Upload photo"
+                            else "Change photo",
+                            fontWeight = FontWeight.SemiBold,
+                            color = XMintBtn
+                        )
+                    }
+                    Text(
+                        text = "JPG, PNG or WebP, up to 5 MB",
+                        fontSize = 11.5.sp,
+                        color = XMuted
+                    )
+                }
+
+                if (photoError != null) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = photoError!!,
+                        fontSize = 12.sp,
+                        color = Color(0xFFD92D20),
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+                    )
+                    TextButton(
+                        onClick = { lastPhotoUri?.let { uploadPhoto(it) } },
+                        enabled = !uploadingPhoto
+                    ) {
+                        Text("Retry upload", color = Color(0xFFD92D20), fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
 
         if (!editingName) {
             Text("Full name", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = XTitle)

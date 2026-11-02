@@ -112,7 +112,6 @@ fun HomeMapScreen(
     onProfile: () -> Unit = {},
     onNotification: () -> Unit = {},
     onRequestRide: () -> Unit = {},
-    onSchedule: () -> Unit = {},
     onPackage: () -> Unit = {},
     onSavedPlaces: () -> Unit = {},
     onPayment: () -> Unit = {}

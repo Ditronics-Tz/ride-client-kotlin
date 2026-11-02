@@ -47,9 +47,11 @@ object Routes {
     const val ACTIVITY = RIDE_HISTORY
     const val PROFILE = "profile"
     const val SETTINGS = "settings"
+    const val PREFERENCES = SETTINGS
+    const val COMMUNICATION_SETTINGS = "communication_settings"
+    const val LANGUAGE_SETTINGS = "language_settings"
     const val PAYMENT = "payment"
     const val SAVED_PLACES = "saved_places"
-    const val SCHEDULE = "schedule"
     const val PACKAGE = "package"
     const val SAFETY = "safety"
     const val PERSONAL_INFO = "personal_info"
@@ -238,7 +240,6 @@ fun AppNavGraph(
                         onProfile = { navigateBottomBar(Routes.PROFILE) },
                         onNotification = { navController.navigate(Routes.INBOX) },
                         onRequestRide = { navController.navigate(Routes.RIDE_DETAILS) },
-                        onSchedule = { navController.navigate(Routes.SCHEDULE) },
                         onPackage = { navController.navigate(Routes.PACKAGE) },
                         onSavedPlaces = { navController.navigate(Routes.SAVED_PLACES) },
                         onPayment = { navController.navigate(Routes.PAYMENT) }
@@ -296,14 +297,11 @@ fun AppNavGraph(
                     }
                 }
                 composable(Routes.SETTINGS) {
-                    SettingsScreen(
+                    PreferencesScreen(
                         onBack = { navController.popBackStack() },
-                        onLogOut = { logOut() },
-                        onCommunication = {},
-                        onLanguage = {},
-                        onCalendar = { navController.navigate(Routes.SCHEDULE) },
+                        onCommunication = { navController.navigate(Routes.COMMUNICATION_SETTINGS) },
+                        onLanguage = { navController.navigate(Routes.LANGUAGE_SETTINGS) },
                         onPrivacy = { navController.navigate(Routes.SAFETY) },
-                        onSignInSecurity = { navController.navigate(Routes.PERSONAL_INFO) },
                         onLegal = { navController.navigate(Routes.HELP_ARTICLES) }
                     )
                 }
@@ -319,7 +317,12 @@ fun AppNavGraph(
                         }
                     )
                 }
-                composable(Routes.SCHEDULE) { ScheduleRideScreen(onBack = { navController.popBackStack() }) }
+                composable(Routes.COMMUNICATION_SETTINGS) {
+                    CommunicationSettingsScreen(onBack = { navController.popBackStack() })
+                }
+                composable(Routes.LANGUAGE_SETTINGS) {
+                    LanguageSettingsScreen(onBack = { navController.popBackStack() })
+                }
                 composable(Routes.PACKAGE) {
                     PackageRideScreen(
                         onBack = { navController.popBackStack() },

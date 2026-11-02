@@ -9,12 +9,14 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.Authenticator
+import okhttp3.Call
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.Route
 import okhttp3.logging.HttpLoggingInterceptor
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import java.util.UUID
@@ -48,7 +50,7 @@ object RidaApiClient {
     private val headersInterceptor = Interceptor { chain ->
         val origRequest = chain.request()
         val builder = origRequest.newBuilder()
-            .header("Accept", "application/json")
+            .header("Accept", origRequest.header("Accept") ?: "application/json")
             .header("X-Device-ID", deviceId)
             .header("X-Device-Platform", "android")
 
@@ -128,6 +130,23 @@ object RidaApiClient {
             .addInterceptor(loggingInterceptor)
             .authenticator(tokenAuthenticator)
             .build()
+    }
+
+    private val publicPhotoClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .followSslRedirects(false)
+            .build()
+    }
+
+    /** Backend photos use the same bearer token and refresh handling as API calls. */
+    fun profilePhotoCall(url: String): Call {
+        val request = Request.Builder().url(url).header("Accept", "image/*").build()
+        val backend = BASE_URL.toHttpUrl()
+        val sameBackend = request.url.scheme == "https" &&
+            request.url.host == backend.host && request.url.port == backend.port
+        return (if (sameBackend) okHttpClient else publicPhotoClient).newCall(request)
     }
 
     val api: RidaApi by lazy {
