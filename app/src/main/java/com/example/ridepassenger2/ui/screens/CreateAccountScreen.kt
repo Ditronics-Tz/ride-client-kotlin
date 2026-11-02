@@ -1,7 +1,9 @@
 package com.example.ridepassenger2.ui.screens
 
+import android.widget.Toast
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -30,7 +32,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Lock
@@ -38,10 +39,13 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -74,8 +78,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.credentials.exceptions.GetCredentialCancellationException
 import com.example.ridepassenger2.R
 import com.example.ridepassenger2.data.local.AuthValidation
+import com.example.ridepassenger2.data.local.GoogleAuthManager
 import com.example.ridepassenger2.data.local.SessionManager
 import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
@@ -90,13 +96,15 @@ private val RidaHint = Color(0xFF98A6A0)
 private val RidaMintWash = Color(0xFFF4FBF8)
 private val RidaField = Color(0xFFFAFCFB)
 private val RidaFieldBorder = Color(0xFFDCE8E3)
+private val RidaDivider = Color(0xFFE5EAE7)
 
 @Composable
 fun CreateAccountScreen(
     onBack: () -> Unit,
     onCreateAccount: () -> Unit,
     onTerms: () -> Unit = {},
-    onPrivacy: () -> Unit = {}
+    onPrivacy: () -> Unit = {},
+    onGoogle: () -> Unit = {}
 ) {
     var fullName by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
@@ -147,30 +155,15 @@ fun CreateAccountScreen(
                 .padding(horizontal = 20.dp)
         ) {
             Spacer(Modifier.height(10.dp))
-            // Back button + Logo
+            // Logo
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable(onClick = onBack),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = RidaInk,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Spacer(Modifier.width(8.dp))
                 RidaLogo(green = RidaPrimary)
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(12.dp))
 
             BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                 val artworkWidth = (maxWidth * 0.43f).coerceAtMost(168.dp)
@@ -199,15 +192,12 @@ fun CreateAccountScreen(
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(6.dp))
 
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .shadow(2.dp, RoundedCornerShape(24.dp))
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Color.White)
-                    .padding(top = 20.dp, bottom = 16.dp)
+                    .padding(top = 6.dp, bottom = 8.dp)
             ) {
                 Text(
                     text = "Full Name",
@@ -215,7 +205,7 @@ fun CreateAccountScreen(
                     fontWeight = FontWeight.SemiBold,
                     color = RidaInk
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 AuthTextField(
                     value = fullName,
                     onValueChange = { fullName = it; nameError = null },
@@ -236,14 +226,14 @@ fun CreateAccountScreen(
                 )
                 AuthError(nameError)
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(10.dp))
                 Text(
                     text = "Phone Number",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = RidaInk
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 AuthTextField(
                     value = phone,
                     onValueChange = { phone = it; phoneError = null },
@@ -264,14 +254,14 @@ fun CreateAccountScreen(
                 )
                 AuthError(phoneError)
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(10.dp))
                 Text(
-                    text = "Email (optional)",
+                    text = "Email ",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = RidaInk
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 AuthTextField(
                     value = email,
                     onValueChange = { email = it },
@@ -290,14 +280,14 @@ fun CreateAccountScreen(
                     )
                 )
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(10.dp))
                 Text(
                     text = "Password",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = RidaInk
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 AuthTextField(
                     value = password,
                     onValueChange = { password = it; pwError = null },
@@ -334,7 +324,7 @@ fun CreateAccountScreen(
                 )
                 AuthError(pwError)
 
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(14.dp))
                 GradientPrimaryButton(
                     text = "Create Account",
                     enabled = !isLoading,
@@ -342,7 +332,39 @@ fun CreateAccountScreen(
                     onClick = ::doCreate
                 )
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(12.dp))
+                AuthOrDivider()
+                Spacer(Modifier.height(12.dp))
+                GoogleSignInButton(
+                    onClick = {
+                        if (isLoading) return@GoogleSignInButton
+                        scope.launch {
+                            isLoading = true
+                            try {
+                                val result = GoogleAuthManager.signIn(context)
+                                if (result.isSuccess) {
+                                    val googleUser = result.getOrNull()!!
+                                    SessionManager.saveGoogleSession(context, googleUser)
+                                    onGoogle()
+                                } else {
+                                    val err = result.exceptionOrNull()
+                                    if (err !is GetCredentialCancellationException) {
+                                        Toast.makeText(
+                                            context,
+                                            "Google Sign-In failed: ${err?.localizedMessage ?: "Unknown error"}",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            } finally {
+                                isLoading = false
+                            }
+                        }
+                    },
+                    enabled = !isLoading
+                )
+
+                Spacer(Modifier.height(10.dp))
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -388,7 +410,7 @@ fun CreateAccountScreen(
                 }
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(10.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -477,6 +499,7 @@ private fun AuthTextField(
             unfocusedContainerColor = RidaField,
             focusedBorderColor = RidaPrimary,
             unfocusedBorderColor = RidaFieldBorder,
+            disabledBorderColor = Color.Transparent,
             errorBorderColor = Color(0xFFD92D20),
             cursorColor = RidaPrimary,
             focusedPlaceholderColor = RidaHint,
@@ -497,6 +520,56 @@ private fun AuthError(message: String?) {
             modifier = Modifier.padding(top = 4.dp, start = 4.dp)
         )
     }
+}
+
+@Composable
+private fun AuthOrDivider() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        HorizontalDivider(modifier = Modifier.weight(1f), color = RidaDivider)
+        Text(
+            text = "OR",
+            modifier = Modifier.padding(horizontal = 12.dp),
+            fontSize = 13.sp,
+            color = RidaSecondary,
+            fontWeight = FontWeight.Medium,
+            letterSpacing = 0.8.sp
+        )
+        HorizontalDivider(modifier = Modifier.weight(1f), color = RidaDivider)
+    }
+}
+
+@Composable
+private fun GoogleSignInButton(onClick: () -> Unit, enabled: Boolean) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = Color.White,
+            contentColor = RidaInk,
+            disabledContentColor = RidaSecondary
+        ),
+        border = BorderStroke(1.dp, RidaFieldBorder)
+    ) {
+        GoogleMark(Modifier.size(20.dp))
+        Spacer(Modifier.width(10.dp))
+        Text("Continue with Google", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun GoogleMark(modifier: Modifier = Modifier) {
+    Image(
+        painter = painterResource(R.drawable.google_g),
+        contentDescription = "Google",
+        modifier = modifier
+    )
 }
 
 @Composable

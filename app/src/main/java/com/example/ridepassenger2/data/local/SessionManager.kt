@@ -12,8 +12,8 @@ import kotlinx.coroutines.flow.map
 private val Context.sessionStore by preferencesDataStore("session")
 
 /**
- * Mock session store (DataStore). Persists who is signed in so the app can
- * skip auth on relaunch and show the real user name on Profile.
+ * Persistent session store (DataStore). Persists who is signed in so the app can
+ * skip auth on relaunch and restore session seamlessly.
  */
 object SessionManager {
 
@@ -22,13 +22,19 @@ object SessionManager {
     private val HANDLE = stringPreferencesKey("handle")
     private val PHONE = stringPreferencesKey("phone")
     private val EMAIL = stringPreferencesKey("email")
+    private val ACCESS_TOKEN = stringPreferencesKey("access_token")
+    private val REFRESH_TOKEN = stringPreferencesKey("refresh_token")
+    private val PROFILE_PIC = stringPreferencesKey("profile_pic")
 
     data class Session(
         val loggedIn: Boolean = false,
         val name: String = "Rida Rider",
         val handle: String = "",
         val phone: String = "",
-        val email: String = ""
+        val email: String = "",
+        val accessToken: String? = null,
+        val refreshToken: String? = null,
+        val profilePictureUrl: String? = null
     )
 
     fun observe(context: Context): Flow<Session> =
@@ -38,7 +44,10 @@ object SessionManager {
                 name = prefs[NAME] ?: "Rida Rider",
                 handle = prefs[HANDLE] ?: "",
                 phone = prefs[PHONE] ?: "",
-                email = prefs[EMAIL] ?: ""
+                email = prefs[EMAIL] ?: "",
+                accessToken = prefs[ACCESS_TOKEN],
+                refreshToken = prefs[REFRESH_TOKEN],
+                profilePictureUrl = prefs[PROFILE_PIC]
             )
         }
 
@@ -50,7 +59,10 @@ object SessionManager {
         name: String,
         handle: String,
         phone: String = "",
-        email: String = ""
+        email: String = "",
+        accessToken: String? = null,
+        refreshToken: String? = null,
+        profilePictureUrl: String? = null
     ) {
         context.sessionStore.edit { prefs ->
             prefs[LOGGED_IN] = true
@@ -58,6 +70,32 @@ object SessionManager {
             prefs[HANDLE] = handle
             if (phone.isNotBlank()) prefs[PHONE] = phone
             if (email.isNotBlank()) prefs[EMAIL] = email
+            if (!accessToken.isNullOrBlank()) prefs[ACCESS_TOKEN] = accessToken
+            if (!refreshToken.isNullOrBlank()) prefs[REFRESH_TOKEN] = refreshToken
+            if (!profilePictureUrl.isNullOrBlank()) prefs[PROFILE_PIC] = profilePictureUrl
+        }
+    }
+
+    suspend fun saveGoogleSession(
+        context: Context,
+        result: GoogleAuthManager.GoogleUserResult
+    ) {
+        context.sessionStore.edit { prefs ->
+            prefs[LOGGED_IN] = true
+            prefs[NAME] = result.displayName.ifBlank { "Rida Rider" }
+            prefs[HANDLE] = "@${result.email.substringBefore("@")}"
+            prefs[EMAIL] = result.email
+            prefs[ACCESS_TOKEN] = result.idToken
+            result.profilePictureUrl?.let { prefs[PROFILE_PIC] = it }
+        }
+    }
+
+    suspend fun updateTokens(context: Context, newAccessToken: String, newRefreshToken: String? = null) {
+        context.sessionStore.edit { prefs ->
+            prefs[ACCESS_TOKEN] = newAccessToken
+            if (!newRefreshToken.isNullOrBlank()) {
+                prefs[REFRESH_TOKEN] = newRefreshToken
+            }
         }
     }
 
@@ -67,8 +105,7 @@ object SessionManager {
             if (phone.isNotBlank()) prefs[PHONE] = phone
             if (email.isNotBlank()) {
                 prefs[EMAIL] = email
-                // Keep handle in sync when it was an email/phone placeholder
-                if ((prefs[HANDLE].isNullOrBlank())) prefs[HANDLE] = email
+                if (prefs[HANDLE].isNullOrBlank()) prefs[HANDLE] = email
             }
         }
     }

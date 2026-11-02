@@ -149,7 +149,13 @@ fun AppNavGraph(
                             }
                         },
                         onForgotPassword = { navController.navigate(Routes.FORGOT_PASSWORD) },
-                        onSignUp = { navController.navigate(Routes.CREATE_ACCOUNT) },
+                        onSignUp = {
+                            if (!navController.popBackStack(Routes.CREATE_ACCOUNT, inclusive = false)) {
+                                navController.navigate(Routes.CREATE_ACCOUNT) {
+                                    popUpTo(Routes.SIGN_IN) { inclusive = true }
+                                }
+                            }
+                        },
                         onGoogle = {
                             navController.navigate(Routes.HOME_MAP) {
                                 popUpTo(Routes.ONBOARDING) { inclusive = true }
@@ -159,8 +165,19 @@ fun AppNavGraph(
                 }
                 composable(Routes.CREATE_ACCOUNT) {
                     CreateAccountScreen(
-                        onBack = { navController.popBackStack() },
+                        onBack = {
+                            if (!navController.popBackStack(Routes.SIGN_IN, inclusive = false)) {
+                                navController.navigate(Routes.SIGN_IN) {
+                                    popUpTo(Routes.CREATE_ACCOUNT) { inclusive = true }
+                                }
+                            }
+                        },
                         onCreateAccount = {
+                            navController.navigate(Routes.HOME_MAP) {
+                                popUpTo(Routes.ONBOARDING) { inclusive = true }
+                            }
+                        },
+                        onGoogle = {
                             navController.navigate(Routes.HOME_MAP) {
                                 popUpTo(Routes.ONBOARDING) { inclusive = true }
                             }
