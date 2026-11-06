@@ -84,7 +84,9 @@ object RidaApiClient {
                     val currentSession = SessionManager.observe(ctx).firstOrNull()
                     val latest = currentSession?.accessToken
                     if (!latest.isNullOrBlank() && response.request.header("Authorization") != "Bearer $latest") {
-                        return@withLock response.request.newBuilder().header("Authorization", "Bearer $latest").build()
+                        val previous=response.request.header("Authorization")?.removePrefix("Bearer ")
+ if(!TokenSessionBoundary.canReplay(previous,latest))return@withLock null
+ return@withLock response.request.newBuilder().header("Authorization", "Bearer $latest").build()
                     }
                     val refreshToken = currentSession?.refreshToken
 
@@ -106,17 +108,17 @@ object RidaApiClient {
                         val newRefresh = refreshResponse.getEffectiveRefreshToken()
 
                         if (newAccess.isNotBlank()) {
-                            SessionManager.updateTokens(ctx, newAccess, newRefresh)
+                            if(!SessionManager.updateTokens(ctx,newAccess,newRefresh,refreshToken))return@withLock null
                             return@withLock response.request.newBuilder()
                                 .header("Authorization", "Bearer $newAccess")
                                 .build()
                         } else {
-                            SessionManager.clear(ctx)
+                            SessionManager.clear(ctx,refreshToken)
                             null
                         }
                     } catch (e: retrofit2.HttpException) {
                         if (e.code() == 401 && SessionManager.observe(ctx).firstOrNull()?.refreshToken == refreshToken) {
-                            SessionManager.clear(ctx)
+                            SessionManager.clear(ctx,refreshToken)
                         }
                         null
                     } catch (e: Exception) {

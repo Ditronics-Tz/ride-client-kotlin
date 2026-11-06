@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -25,6 +26,13 @@ import org.osmdroid.views.overlay.Marker
 
 @Composable
 fun SharedRideScreen(back: () -> Unit) {
+ val context=LocalContext.current
+ val session by com.example.ridepassenger2.data.local.SessionManager.observe(context).collectAsState(initial=com.example.ridepassenger2.data.local.SessionManager.Session())
+ key(session.loggedIn,session.email) { if(session.loggedIn) SharedRideContent(back) else Text("Sign in to view shared rides.") }
+}
+
+@Composable
+private fun SharedRideContent(back: () -> Unit) {
     val api = RidaApiClient.transport
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -38,29 +46,38 @@ fun SharedRideScreen(back: () -> Unit) {
     var error by remember { mutableStateOf("") }
     var connection by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    var history by rememberSaveable { mutableStateOf(false) }
+ var cursor by remember { mutableLongStateOf(0) }
+    var historyOffset by rememberSaveable {mutableIntStateOf(0)}
+ var history by rememberSaveable { mutableStateOf(false) }
 
     var area by remember { mutableStateOf<SharedPoint?>(null) }
     var nearby by remember { mutableStateOf(emptyList<SharedTrip>()) }
     var selected by rememberSaveable { mutableStateOf<String?>(null) }
-    var map by rememberSaveable { mutableStateOf(false) }
+    var nearbyOffset by rememberSaveable {mutableIntStateOf(0)}
+ var destinationFilter by rememberSaveable { mutableStateOf("") }
+ var vehicleFilter by rememberSaveable { mutableStateOf("") }
+ var maxPrice by rememberSaveable { mutableStateOf("") }
+ var radius by rememberSaveable { mutableDoubleStateOf(10.0) }
+ var map by rememberSaveable { mutableStateOf(false) }
 
     suspend fun refresh() {
         if (actor.isEmpty()) actor = RidaApiClient.api.me().user.id
         fees = api.fees()
-        mine = api.list("mine").trips
-        active = mine.firstOrNull {
+        val activePage=mergeTransportSnapshots(listOfNotNull(active)+mine,api.list("mine").trips)
+ val page=if(history&&historyOffset>0)api.list("mine",offset=historyOffset).trips else activePage
+ mine=mergeTransportSnapshots(mine,page)
+        active = activePage.firstOrNull {
             it.status in listOf("waiting", "in_progress") &&
                 it.my_seat?.status in listOf("held", "confirmed")
         }
         val center = area
         nearby =
             if (center == null || active != null) emptyList()
-            else api.list("nearby", center.lat, center.lng).trips
+            else api.list("nearby", center.lat, center.lng,radius=radius,offset=nearbyOffset).trips
         position = active?.let { api.position(it.id).body() }
         connection = ""
     }
-    LaunchedEffect(owner, area) {
+    LaunchedEffect(owner, area,radius,nearbyOffset,history,historyOffset) {
         owner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 try {
@@ -72,8 +89,8 @@ fun SharedRideScreen(back: () -> Unit) {
                 try {
                     val trip = active
                     if (connection.isNotEmpty()) delay(2000)
-                    else if (trip != null) api.waitForUpdate(tripId = trip.id)
-                    else if (area != null) api.waitForUpdate(lat = area?.lat, lng = area?.lng)
+                    else if (trip != null) api.waitForUpdate(tripId = trip.id,after=cursor).also { cursor=it.cursor }
+                    else if (area != null) api.waitForUpdate(lat = area?.lat, lng = area?.lng,after=cursor,radius=radius).also { cursor=it.cursor }
                     else delay(2000)
                 } catch (e: Exception) {
                     connection = transportError(e)
@@ -101,7 +118,7 @@ fun SharedRideScreen(back: () -> Unit) {
         }
     }
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxSize().testTag("shared-trip-content").padding(horizontal = 16.dp),
         contentPadding = PaddingValues(vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -118,12 +135,14 @@ fun SharedRideScreen(back: () -> Unit) {
         if (connection.isNotBlank()) item { Text(connection) }
         if (history) {
             if (mine.isEmpty()) item { Text("No shared trips yet.") }
-            mine.forEach { t -> item(key = t.id) { TripSummary(t) } }
+            mine.forEach { t -> item(key = t.id) { TripSummary(t);SharedTripHelp(t); if(t.my_seat?.status=="completed") SharedTripRating(t) } }
+ item {Row{TextButton(enabled=historyOffset>0,onClick={historyOffset=(historyOffset-50).coerceAtLeast(0)}){Text("Previous history")};TextButton(enabled=mine.size==50,onClick={historyOffset+=50}){Text("Next history")}}}
         } else {
             val trip = active
             if (trip != null) {
                 item {
                     TripSummary(trip)
+ SharedTripHelp(trip)
                     val point = position
                     if (point == null) Text("Live driver location unavailable")
                     else {
@@ -149,11 +168,7 @@ fun SharedRideScreen(back: () -> Unit) {
                             while (seconds > 0) {
                                 delay(500)
                                 seconds =
-                                    (seat.expires -
-                                            trip.server_time -
-                                            (android.os.SystemClock.elapsedRealtime() - baseline) /
-                                                1000)
-                                        .coerceAtLeast(0)
+                                    remainingHoldSeconds(seat.expires,trip.server_time,baseline,android.os.SystemClock.elapsedRealtime())
                             }
                         }
                         if (seconds > 0) {
@@ -204,27 +219,38 @@ fun SharedRideScreen(back: () -> Unit) {
                     item {
                         PlaceField("Pickup area", area) {
                             area = it
+ nearbyOffset=0;cursor=0
                             selected = null
                         }
                         UseLocation {
                             area = it
+ nearbyOffset=0;cursor=0
                             selected = null
                         }
                     }
                     area?.let { center ->
                         item {
-                            Text("Within 10 km of ${center.address}")
+                            Text("Within ${radius.toInt()} km of ${center.address}")
+ Row { listOf(5.0,10.0,25.0,50.0).forEach{km->TextButton(onClick={radius=km;cursor=0}){Text("${km.toInt()} km")}} }
+ OutlinedTextField(destinationFilter,{destinationFilter=it},label={Text("Filter destination")})
+ OutlinedTextField(vehicleFilter,{vehicleFilter=it},label={Text("Filter vehicle type")})
+ OutlinedTextField(maxPrice,{maxPrice=it.filter(Char::isDigit)},label={Text("Maximum seat price (TZS)")})
                             TextButton(onClick = { map = !map }) {
                                 Text(if (map) "Show list" else "Show pickup map")
                             }
-                            if (map) PickupMap(center, nearby) { selected = it }
+                            if (map) PickupMap(center, nearby.filter{(destinationFilter.isBlank()||it.dropoff.address.contains(destinationFilter,true))&&(vehicleFilter.isBlank()||it.vehicle.contains(vehicleFilter,true))&&(maxPrice.toLongOrNull()?.let{max->it.price<=max}?:true)}) { selected = it }
                         }
+                        item {Text("Showing up to 50 trips per page. Filters apply to this page.");Row{TextButton(enabled=nearbyOffset>0,onClick={nearbyOffset=(nearbyOffset-50).coerceAtLeast(0);selected=null}){Text("Previous trips")};TextButton(enabled=nearby.size==50,onClick={nearbyOffset+=50;selected=null}){Text("Next trips")}}}
                         if (nearby.isEmpty()) item { Text("No bookable shared trips nearby.") }
                         nearby
-                            .filter { !map || it.id == selected }
+                            .filter { t-> destinationFilter.isBlank()||t.dropoff.address.contains(destinationFilter,true) }
+ .filter { t-> vehicleFilter.isBlank()||t.vehicle.contains(vehicleFilter,true) }
+ .filter { t-> maxPrice.toLongOrNull()?.let{t.price<=it}?:true }
+ .filter { !map || selected==null || it.id == selected || nearby.find{t->t.id==selected}?.let{t->t.pickup.lat==it.pickup.lat&&t.pickup.lng==it.pickup.lng}==true }
                             .forEach { t ->
                                 item(key = t.id) {
                                     TripSummary(t)
+ Text("Arrive at pickup within five minutes. Your seat is confirmed only after the driver verifies your pickup code.")
                                     Button(
                                         enabled = !busy && actor.isNotEmpty() && t.available > 0,
                                         onClick = {
@@ -253,6 +279,14 @@ private fun TripSummary(t: SharedTrip) {
         )
         Text("${t.vehicle} · TZS ${t.price} per seat · ${t.status}")
         Text("${t.available} available · ${t.held} held · ${t.confirmed} verified")
+ Text("Pickup deadline: "+java.text.SimpleDateFormat("dd MMM HH:mm",java.util.Locale.getDefault()).apply{timeZone=java.util.TimeZone.getTimeZone("Africa/Dar_es_Salaam")}.format(java.util.Date(t.deadline*1000)))
+ if(t.driver_name.isNotBlank()) Text("Driver: ${t.driver_name}")
+ t.receipt?.let { r->
+ Text("Trip receipt · Cash paid directly to driver")
+ Text("Gross TZS ${r.gross} · Whole-trip fee TZS ${r.fee} · Driver net TZS ${r.net}")
+ Text(if(r.status=="wallet_debited") "Platform fee posted to driver wallet" else "Platform fee receivable — collection pending")
+ }
+ t.my_seat?.takeIf{it.status=="completed"}?.let{Text("Your cash fare: TZS ${t.price}") }
     }
 }
 
@@ -284,11 +318,12 @@ private fun PickupMap(
         modifier = Modifier.fillMaxWidth().height(260.dp),
         update = {
             map.overlays.clear()
-            trips.forEach { t ->
+            trips.groupBy{Pair(it.pickup.lat,it.pickup.lng)}.values.forEach { group ->
+ val t=group.first()
                 map.overlays.add(
                     Marker(map).apply {
                         position = GeoPoint(t.pickup.lat, t.pickup.lng)
-                        title = t.pickup.address
+                        title = if(group.size>1) "${group.size} trips: ${t.pickup.address}" else t.pickup.address
                         setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                         setOnMarkerClickListener { _, _ ->
                             select(t.id)
