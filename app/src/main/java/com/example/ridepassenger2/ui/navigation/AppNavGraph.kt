@@ -235,7 +235,12 @@ fun AppNavGraph(
                         }
                     )
                 }
+                composable("shared-rides") { com.example.ridepassenger2.ui.screens.SharedRideScreen { navController.popBackStack() } }
                 composable(Routes.HOME_MAP) {
+                    androidx.compose.foundation.layout.Column {
+                        androidx.compose.material3.TextButton(onClick = { navController.navigate("shared-rides") }) {
+                            androidx.compose.material3.Text("Find a shared ride")
+                        }
                     HomeMapScreen(
                         onProfile = { navigateBottomBar(Routes.PROFILE) },
                         onNotification = { navController.navigate(Routes.INBOX) },
@@ -244,6 +249,7 @@ fun AppNavGraph(
                         onSavedPlaces = { navController.navigate(Routes.SAVED_PLACES) },
                         onPayment = { navController.navigate(Routes.PAYMENT) }
                     )
+                    }
                 }
                 composable(Routes.INBOX) {
                     NotificationsScreen(

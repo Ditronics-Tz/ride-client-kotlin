@@ -149,14 +149,17 @@ object RidaApiClient {
         return (if (sameBackend) okHttpClient else publicPhotoClient).newCall(request)
     }
 
-    val api: RidaApi by lazy {
+    private val retrofit by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
-            .create(RidaApi::class.java)
+
     }
+
+    val api: RidaApi by lazy { retrofit.create(RidaApi::class.java) }
+    val transport: TransportApi by lazy { retrofit.create(TransportApi::class.java) }
 
     fun generateIdempotencyKey(): String = UUID.randomUUID().toString()
 }
