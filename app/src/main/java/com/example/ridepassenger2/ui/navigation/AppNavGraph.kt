@@ -241,14 +241,14 @@ fun AppNavGraph(
                         androidx.compose.material3.TextButton(onClick = { navController.navigate("shared-rides") }) {
                             androidx.compose.material3.Text("Find a shared ride")
                         }
-                    HomeMapScreen(
-                        onProfile = { navigateBottomBar(Routes.PROFILE) },
-                        onNotification = { navController.navigate(Routes.INBOX) },
-                        onRequestRide = { navController.navigate(Routes.RIDE_DETAILS) },
-                        onPackage = { navController.navigate(Routes.PACKAGE) },
-                        onSavedPlaces = { navController.navigate(Routes.SAVED_PLACES) },
-                        onPayment = { navController.navigate(Routes.PAYMENT) }
-                    )
+                        HomeMapScreen(
+                            onProfile = { navigateBottomBar(Routes.PROFILE) },
+                            onNotification = { navController.navigate(Routes.INBOX) },
+                            onRequestRide = { navController.navigate(Routes.RIDE_DETAILS) },
+                            onPackage = { navController.navigate(Routes.PACKAGE) },
+                            onSavedPlaces = { navController.navigate(Routes.SAVED_PLACES) },
+                            onPayment = { navController.navigate(Routes.PAYMENT) }
+                        )
                     }
                 }
                 composable(Routes.INBOX) {
@@ -257,6 +257,7 @@ fun AppNavGraph(
                         onNavigateToPromo = { code ->
                             navController.navigate("${Routes.PROMOTION_DETAILS}?code=$code")
                         },
+                        onSharedRide = { navController.navigate("shared-rides") },
                         onNavigateToRide = { rideId ->
                             navController.navigate(Routes.RIDE_DETAILS)
                         }

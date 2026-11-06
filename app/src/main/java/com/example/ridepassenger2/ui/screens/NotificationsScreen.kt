@@ -32,7 +32,8 @@ import kotlinx.coroutines.launch
 fun NotificationsScreen(
     onBack: () -> Unit = {},
     onNavigateToPromo: (String) -> Unit = {},
-    onNavigateToRide: (String) -> Unit = {}
+    onNavigateToRide: (String) -> Unit = {},
+    onSharedRide: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -207,7 +208,8 @@ fun NotificationsScreen(
                             scope.launch { NotificationRepository.markRead(item.id) }
                             val promoCode = item.promoCode
                             val rideId = item.rideId
-                            if (!promoCode.isNullOrBlank()) {
+                            if (item.data.containsKey("shared_trip_id")) onSharedRide()
+                            else if (!promoCode.isNullOrBlank()) {
                                 onNavigateToPromo(promoCode)
                             } else if (!rideId.isNullOrBlank()) {
                                 onNavigateToRide(rideId)

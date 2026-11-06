@@ -114,25 +114,11 @@ object MapServiceFactory {
         }
         .build()
 
-    // Nominatim base: https://nominatim.openstreetmap.org/
-    val nominatim: NominatimApi by lazy {
-        Retrofit.Builder()
-            .baseUrl("https://nominatim.openstreetmap.org/")
-            .client(okHttp)
-            .addConverterFactory(moshiFactory())
-            .build()
-            .create(NominatimApi::class.java)
-    }
+    internal fun <T> service(base: String, type: Class<T>, client: OkHttpClient = okHttp): T =
+        Retrofit.Builder().baseUrl(base).client(client).addConverterFactory(moshiFactory()).build().create(type)
 
-    // OSRM demo server; swap to self-hosted for production
-    val osrm: OsrmApi by lazy {
-        Retrofit.Builder()
-            .baseUrl("https://router.project-osrm.org/")
-            .client(okHttp)
-            .addConverterFactory(moshiFactory())
-            .build()
-            .create(OsrmApi::class.java)
-    }
+    val nominatim: NominatimApi by lazy { service("https://nominatim.openstreetmap.org/", NominatimApi::class.java) }
+    val osrm: OsrmApi by lazy { service("https://router.project-osrm.org/", OsrmApi::class.java) }
 }
 
 // Convenience extension to build OSRM coords string

@@ -19,6 +19,9 @@ android {
         versionCode = 1
         versionName = "1.0"
 
+        val apiBase = providers.gradleProperty("rida.apiBaseUrl").orElse("https://rida-backend.ditronics.co.tz/api/v1/").get()
+        require(apiBase.startsWith("https://") && apiBase.endsWith("/") && '"' !in apiBase) { "rida.apiBaseUrl must be an HTTPS base URL ending in /" }
+        buildConfigField("String", "API_BASE_URL", "\"" + apiBase + "\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -34,6 +37,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
+        buildConfig = true
         compose = true
     }
     kotlinOptions {
