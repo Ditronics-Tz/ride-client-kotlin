@@ -40,7 +40,12 @@ data class SharedTrip(
 
 data class TripPage(val trips: List<SharedTrip>)
 
+data class SharedPosition(val lat: Double, val lng: Double, val updated_at: String)
+
 interface TransportApi {
+    @GET("shared-trips/{id}/driver-location")
+    suspend fun position(@Path("id") id: String): retrofit2.Response<SharedPosition>
+
     @GET("transport/watch")
     suspend fun waitForUpdate(
         @Query("trip_id") tripId: String? = null,

@@ -30,6 +30,7 @@ fun SharedRideScreen(back: () -> Unit) {
     val scope = rememberCoroutineScope()
     val owner = LocalLifecycleOwner.current
     val lock = remember { Mutex() }
+    var position by remember { mutableStateOf<SharedPosition?>(null) }
     var actor by remember { mutableStateOf("") }
     var fees by remember { mutableStateOf<TransportFees?>(null) }
     var mine by remember { mutableStateOf(emptyList<SharedTrip>()) }
@@ -56,6 +57,7 @@ fun SharedRideScreen(back: () -> Unit) {
         nearby =
             if (center == null || active != null) emptyList()
             else api.list("nearby", center.lat, center.lng).trips
+        position = active?.let { api.position(it.id).body() }
         connection = ""
     }
     LaunchedEffect(owner, area) {
@@ -64,6 +66,7 @@ fun SharedRideScreen(back: () -> Unit) {
                 try {
                     lock.withLock { refresh() }
                 } catch (e: Exception) {
+                    position = null
                     connection = transportError(e)
                 }
                 try {
@@ -119,20 +122,50 @@ fun SharedRideScreen(back: () -> Unit) {
         } else {
             val trip = active
             if (trip != null) {
-                item { TripSummary(trip) }
+                item {
+                    TripSummary(trip)
+                    val point = position
+                    if (point == null) Text("Live driver location unavailable")
+                    else {
+                        PickupMap(trip.pickup, listOf(trip), point) {}
+                        Text("Driver location updated ${point.updated_at}")
+                    }
+                }
 
                 item {
                     val seat = trip.my_seat
                     if (seat?.status == "held") {
-                        val seconds = (seat.expires - trip.server_time).coerceAtLeast(0)
-                        Text("Hold: %d:%02d".format(seconds / 60, seconds % 60))
-                        Text(
-                            "Pickup code: ${trip.pin.orEmpty()}",
-                            style = MaterialTheme.typography.headlineSmall,
-                        )
-                        Text(
-                            "Show this code to the driver at the pickup point to confirm your seat."
-                        )
+                        val baseline =
+                            remember(seat.id, trip.server_time) {
+                                android.os.SystemClock.elapsedRealtime()
+                            }
+                        var seconds by
+                            remember(seat.id, trip.server_time) {
+                                mutableLongStateOf(
+                                    (seat.expires - trip.server_time).coerceAtLeast(0)
+                                )
+                            }
+                        LaunchedEffect(baseline, seat.expires) {
+                            while (seconds > 0) {
+                                delay(500)
+                                seconds =
+                                    (seat.expires -
+                                            trip.server_time -
+                                            (android.os.SystemClock.elapsedRealtime() - baseline) /
+                                                1000)
+                                        .coerceAtLeast(0)
+                            }
+                        }
+                        if (seconds > 0) {
+                            Text("Hold: %d:%02d".format(seconds / 60, seconds % 60))
+                            Text(
+                                "Pickup code: ${trip.pin.orEmpty()}",
+                                style = MaterialTheme.typography.headlineSmall,
+                            )
+                            Text(
+                                "Show this code to the driver at the pickup point to confirm your seat."
+                            )
+                        } else Text("Seat hold expired. Refreshing availability…")
                     } else Text("Seat ${seat?.status.orEmpty()}")
                     TextButton(
                         onClick = {
@@ -224,7 +257,12 @@ private fun TripSummary(t: SharedTrip) {
 }
 
 @Composable
-private fun PickupMap(center: SharedPoint, trips: List<SharedTrip>, select: (String) -> Unit) {
+private fun PickupMap(
+    center: SharedPoint,
+    trips: List<SharedTrip>,
+    driver: SharedPosition? = null,
+    select: (String) -> Unit,
+) {
     val context = LocalContext.current
     val map = remember {
         MapView(context).apply {
@@ -256,6 +294,16 @@ private fun PickupMap(center: SharedPoint, trips: List<SharedTrip>, select: (Str
                             select(t.id)
                             true
                         }
+                    }
+                )
+            }
+            driver?.let { point ->
+                map.overlays.add(
+                    Marker(map).apply {
+                        position = GeoPoint(point.lat, point.lng)
+                        title = "Driver"
+                        setTextIcon("Driver")
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                     }
                 )
             }
