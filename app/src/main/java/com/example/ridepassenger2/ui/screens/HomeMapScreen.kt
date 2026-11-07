@@ -259,6 +259,7 @@ fun HomeMapScreen(
                 routePoints = emptyList()
                 Toast.makeText(context, "No road route found to that pin", Toast.LENGTH_SHORT).show()
             }
+        } catch (cancelled: CancellationException) { throw cancelled
         } catch (_: Exception) {
             routePoints = emptyList()
             Toast.makeText(context, "Couldn't calculate the route — check connection", Toast.LENGTH_SHORT).show()
@@ -280,7 +281,8 @@ fun HomeMapScreen(
     val activeRide by RideRepository.activeRide.collectAsState()
     val justCompleted by RideRepository.lastCompleted.collectAsState()
     val driverPin by RideRepository.driverPin.collectAsState()
-    val busy = activeRide != null
+    val actionPending by RideRepository.rideActionPending.collectAsState()
+    val busy = activeRide != null || actionPending
 
     // Jump to live tracking the moment the driver starts arriving.
     LaunchedEffect(activeRide?.phase) {
@@ -408,7 +410,7 @@ fun HomeMapScreen(
                         )
                         if (query.isNotEmpty()) {
                             HomeGlassIconButton(icon = RidaIcons.Close, label = "Clear search") {
-                                query = ""; destination = null; destinationLabel = null
+                                query = ""; destination = null; destinationLabel = null; RideRepository.clearRoute()
                                 routePoints = emptyList(); searchResults = emptyList()
                             }
                         }
@@ -440,6 +442,26 @@ fun HomeMapScreen(
                 }
             }
             Spacer(modifier = Modifier.weight(1f))
+        }
+
+        Column(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding()
+                .padding(start = 16.dp, end = 16.dp, bottom = 84.dp)
+        ) {
+            val current = activeRide
+            if (current != null) {
+                RideStatusCard(current.phase, current) { RideRepository.cancelRide() }
+                androidx.compose.material3.TextButton(onClick = onRequestRide) { Text("Open active ride") }
+            } else if (destination != null) {
+                androidx.compose.material3.Button(
+                    enabled = !actionPending && currentLocation != null,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        snapshotRoute()
+                        RideRepository.requestRide("Pickup", destinationLabel ?: "Destination", priceText, selectedOption, onRequestRide)
+                    }
+                ) { Text(if (actionPending) "Requesting ride…" else if (currentLocation == null) "Enable location to request a ride" else "Request $selectedOption ride · $priceText") }
+            }
         }
 
         // Keep the location control accessible over the map.

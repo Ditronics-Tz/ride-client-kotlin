@@ -39,40 +39,16 @@ fun CommunicationSettingsScreen(
 ) {
     val scope = rememberCoroutineScope()
 
-    var rideUpdates by remember { mutableStateOf(true) }
-    var tripMessages by remember { mutableStateOf(true) }
-    var offersPromotions by remember { mutableStateOf(true) }
-    var pushNotifications by remember { mutableStateOf(true) }
-    var emailUpdates by remember { mutableStateOf(false) }
-    var smsUpdates by remember { mutableStateOf(true) }
-
-    LaunchedEffect(Unit) {
-        try {
-            val prefs = RidaApiClient.api.getPreferences()
-            rideUpdates = prefs.rideUpdates ?: true
-            tripMessages = prefs.tripMessages ?: true
-            offersPromotions = prefs.promotions ?: true
-            pushNotifications = prefs.pushEnabled ?: true
-            emailUpdates = prefs.emailEnabled ?: false
-            smsUpdates = prefs.smsEnabled ?: true
-        } catch (_: Exception) { }
-    }
-
-    fun syncPreferences() {
-        scope.launch {
-            try {
-                val updateMap = mapOf(
-                    "ride_updates" to rideUpdates,
-                    "trip_messages" to tripMessages,
-                    "promotions" to offersPromotions,
-                    "push_enabled" to pushNotifications,
-                    "email_enabled" to emailUpdates,
-                    "sms_enabled" to smsUpdates
-                )
-                RidaApiClient.api.updatePreferences(updateMap)
-            } catch (_: Exception) { }
-        }
-    }
+    val editor = remember { com.example.ridepassenger2.data.repository.CommunicationPreferences(RidaApiClient.api, scope) }
+    val state by editor.state.collectAsState()
+    val enabled = !state.loading && !state.saving && state.error == null
+    val rideUpdates = state.preferences.rideUpdates ?: true
+    val tripMessages = state.preferences.tripMessages ?: true
+    val offersPromotions = state.preferences.promotions ?: false
+    val pushNotifications = state.preferences.pushEnabled ?: true
+    val emailUpdates = state.preferences.emailEnabled ?: true
+    val smsUpdates = state.preferences.smsEnabled ?: true
+    LaunchedEffect(editor) { editor.refresh() }
 
     Box(
         modifier = Modifier
@@ -86,6 +62,11 @@ fun CommunicationSettingsScreen(
                 .navigationBarsPadding()
                 .padding(horizontal = 20.dp)
         ) {
+            if (state.loading || state.saving) Text(if (state.loading) "Loading preferences…" else "Saving preference…")
+            state.error?.let { message ->
+                Text(message)
+                androidx.compose.material3.TextButton(onClick = { editor.refresh() }) { Text("Retry") }
+            }
             // Top Navigation Bar
             Row(
                 modifier = Modifier
@@ -149,9 +130,9 @@ fun CommunicationSettingsScreen(
                     title = "Ride updates",
                     subtitle = "Driver assignment and arrival alerts",
                     checked = rideUpdates,
+                    enabled = enabled,
                     onCheckedChange = {
-                        rideUpdates = it
-                        syncPreferences()
+                        editor.change("ride_updates", it)
                     }
                 )
 
@@ -162,9 +143,9 @@ fun CommunicationSettingsScreen(
                     title = "Trip messages",
                     subtitle = "Driver and support messages",
                     checked = tripMessages,
+                    enabled = enabled,
                     onCheckedChange = {
-                        tripMessages = it
-                        syncPreferences()
+                        editor.change("trip_messages", it)
                     }
                 )
 
@@ -185,9 +166,9 @@ fun CommunicationSettingsScreen(
                     title = "Offers and promotions",
                     subtitle = "Discounts and occasional updates",
                     checked = offersPromotions,
+                    enabled = enabled,
                     onCheckedChange = {
-                        offersPromotions = it
-                        syncPreferences()
+                        editor.change("promotions", it)
                     }
                 )
 
@@ -211,19 +192,16 @@ fun CommunicationSettingsScreen(
                         .border(1.dp, CardBorder, RoundedCornerShape(20.dp))
                         .padding(horizontal = 18.dp, vertical = 4.dp)
                 ) {
-                    SimpleChannelRow("Push notifications", pushNotifications) {
-                        pushNotifications = it
-                        syncPreferences()
+                    SimpleChannelRow("Push notifications", pushNotifications, enabled) {
+                        editor.change("push_enabled", it)
                     }
                     HorizontalDivider(color = CardBorder, thickness = 1.dp)
-                    SimpleChannelRow("Email updates", emailUpdates) {
-                        emailUpdates = it
-                        syncPreferences()
+                    SimpleChannelRow("Email updates", emailUpdates, enabled) {
+                        editor.change("email_enabled", it)
                     }
                     HorizontalDivider(color = CardBorder, thickness = 1.dp)
-                    SimpleChannelRow("SMS updates", smsUpdates) {
-                        smsUpdates = it
-                        syncPreferences()
+                    SimpleChannelRow("SMS updates", smsUpdates, enabled) {
+                        editor.change("sms_enabled", it)
                     }
                 }
 
@@ -242,6 +220,7 @@ private fun CommunicationCardRow(
     title: String,
     subtitle: String,
     checked: Boolean,
+    enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
@@ -284,6 +263,7 @@ private fun CommunicationCardRow(
         }
         Switch(
             checked = checked,
+            enabled = enabled,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedTrackColor = RidaGreen,
@@ -297,6 +277,7 @@ private fun CommunicationCardRow(
 private fun SimpleChannelRow(
     title: String,
     checked: Boolean,
+    enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
@@ -314,6 +295,7 @@ private fun SimpleChannelRow(
         )
         Switch(
             checked = checked,
+            enabled = enabled,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedTrackColor = RidaGreen,

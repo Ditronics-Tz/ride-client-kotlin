@@ -82,6 +82,7 @@ import com.example.ridepassenger2.ui.components.RidaIcon
 import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.components.RidaLogo
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ensureActive
 
 private val RidaPrimary = Color(0xFF00C878)
 private val RidaForest = Color(0xFF063F32)
@@ -103,7 +104,6 @@ fun SignInScreen(
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var rememberMe by remember { mutableStateOf(true) }
     var passwordVisible by remember { mutableStateOf(false) }
     var emailError by remember { mutableStateOf<String?>(null) }
     var pwError by remember { mutableStateOf<String?>(null) }
@@ -118,12 +118,13 @@ fun SignInScreen(
         pwError = AuthValidation.passwordError(password)
         if (emailError != null || pwError != null) return
 
+        isLoading = true
         scope.launch {
-            isLoading = true
             formError = null
             try {
                 val loginReq = LoginRequest(email = email.trim(), password = password)
                 val sessionResp = RidaApiClient.api.login(loginReq)
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 val user = sessionResp.user
                 SessionManager.save(
                     context = context,
@@ -137,7 +138,7 @@ fun SignInScreen(
                 )
                 UserRepository.refreshSessionFromApi(context)
                 onSignIn()
-            } catch (e: Exception) {
+            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (e: Exception) {
                 formError = com.example.ridepassenger2.data.remote.RidaApiErrors.message(e, "Sign in failed. Check your email and password.")
             } finally {
                 isLoading = false
@@ -295,10 +296,7 @@ fun SignInScreen(
                 AuthError(formError)
 
                 Spacer(Modifier.height(6.dp))
-                RememberMeRow(
-                    checked = rememberMe,
-                    onCheckedChange = { rememberMe = it }
-                )
+                Text("You stay signed in until you log out.", color = RidaSecondary, fontSize = 12.sp)
 
                 Spacer(Modifier.height(14.dp))
                 GradientSignInButton(
@@ -313,8 +311,8 @@ fun SignInScreen(
                 GoogleSignInButton(
                     onClick = {
                         if (isLoading) return@GoogleSignInButton
+                        isLoading = true
                         scope.launch {
-                            isLoading = true
                             try {
                                 val result = GoogleAuthManager.signIn(context)
                                 if (result.isSuccess) {
@@ -467,51 +465,6 @@ private fun AuthOrDivider() {
     }
 }
 
-@Composable
-private fun RememberMeRow(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .toggleable(value = checked, role = Role.Checkbox, onValueChange = onCheckedChange)
-            .padding(end = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier.size(48.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(20.dp)
-                    .clip(RoundedCornerShape(5.dp))
-                    .background(if (checked) RidaPrimary else Color.White)
-                    .then(
-                        if (checked) Modifier else Modifier.border(
-                            width = 1.dp,
-                            color = RidaFieldBorder,
-                            shape = RoundedCornerShape(5.dp)
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                if (checked) {
-                    RidaIcon(
-                        icon = RidaIcons.Check,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(15.dp)
-                    )
-                }
-            }
-        }
-        Text(
-            text = "Remember me",
-            fontSize = 13.sp,
-            color = RidaSecondary,
-            modifier = Modifier.semantics { contentDescription = "Remember me, ${if (checked) "checked" else "unchecked"}" }
-        )
-    }
-}
 
 @Composable
 private fun GradientSignInButton(enabled: Boolean, loading: Boolean, onClick: () -> Unit) {

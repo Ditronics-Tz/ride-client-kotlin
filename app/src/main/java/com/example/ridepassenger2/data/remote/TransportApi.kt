@@ -99,3 +99,6 @@ interface TransportApi {
 
 internal fun mergeTransportSnapshots(previous:List<SharedTrip>,incoming:List<SharedTrip>):List<SharedTrip> = incoming.map{next->previous.find{it.id==next.id}?.takeIf{it.version>next.version}?:next}
 internal fun remainingHoldSeconds(expires:Long,serverTime:Long,baselineMillis:Long,nowMonotonicMillis:Long):Long = (expires-serverTime-((nowMonotonicMillis-baselineMillis).coerceAtLeast(0)/1000)).coerceAtLeast(0)
+
+internal fun SharedTrip.isPassengerCommitment(): Boolean =
+    status in setOf("waiting", "in_progress") && my_seat?.status in setOf("held", "confirmed")

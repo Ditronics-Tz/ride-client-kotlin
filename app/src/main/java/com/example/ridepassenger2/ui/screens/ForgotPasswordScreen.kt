@@ -90,8 +90,7 @@ fun ForgotPasswordScreen(
     fun doSendReset() {
         error = AuthValidation.emailError(email)
         if (error == null) {
-            sent = true
-            onSendReset()
+            error = "Password reset is currently unavailable. Contact Rida support for account recovery."
         }
     }
 
@@ -278,7 +277,7 @@ private fun ForgotPasswordCopy(modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            text = "No worries. Enter your email address and we'll send you a reset link.",
+            text = "Password reset is currently unavailable. Contact Rida support for account recovery.",
             fontSize = 13.5.sp,
             lineHeight = 19.sp,
             fontWeight = FontWeight.Normal,

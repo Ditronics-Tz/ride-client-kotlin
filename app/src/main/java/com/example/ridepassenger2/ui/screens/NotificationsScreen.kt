@@ -37,6 +37,10 @@ fun NotificationsScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val rideError by com.example.ridepassenger2.data.repository.RideRepository.rideActionError.collectAsState()
+    LaunchedEffect(rideError) {
+        rideError?.let { android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_LONG).show() }
+    }
 
     val notifications by NotificationRepository.notifications.collectAsState()
     val unreadCount by NotificationRepository.unreadCount.collectAsState()

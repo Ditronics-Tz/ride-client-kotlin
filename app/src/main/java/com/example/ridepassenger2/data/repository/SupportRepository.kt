@@ -12,8 +12,26 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.cancelChildren
 
 object SupportRepository {
+
+    @Synchronized fun reset() {
+        scope.coroutineContext[kotlinx.coroutines.Job]?.cancelChildren()
+        _tickets.value = emptyList()
+        _loading.value = false
+        _error.value = null
+    }
+
+    private suspend fun <T> publish(block: () -> T): T {
+        val job = currentCoroutineContext()[kotlinx.coroutines.Job]
+        return synchronized(this) { job?.ensureActive(); block() }
+    }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -26,13 +44,13 @@ object SupportRepository {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    fun refresh() {
+    @Synchronized fun refresh() {
         scope.launch {
-            _loading.value = true
-            _error.value = null
+            publish { _loading.value = true; _error.value = null }
             try {
                 val resp = RidaApiClient.api.getSupportTickets()
-                _tickets.value = resp.tickets.map { dto ->
+                currentCoroutineContext().ensureActive()
+                val tickets = resp.tickets.map { dto ->
                     Ticket(
                         id = dto.id,
                         subject = dto.subject,
@@ -41,25 +59,26 @@ object SupportRepository {
                         updated = formatRideTimestamp(dto.createdAt)
                     )
                 }
-            } catch (e: Exception) {
-                _error.value = e.message ?: "Could not load support tickets"
-                _tickets.value = emptyList()
+                publish { _tickets.value = tickets }
+            } catch (cancelled: CancellationException) { throw cancelled } catch (e: Exception) {
+                publish { _error.value = e.message ?: "Could not load support tickets" }
             } finally {
-                _loading.value = false
+                if (currentCoroutineContext().isActive) publish { _loading.value = false }
             }
         }
     }
 
-    fun createTicket(subject: String, description: String, category: String, onSuccess: (String) -> Unit, onError: (String) -> Unit) {
+    @Synchronized fun createTicket(subject: String, description: String, category: String, onSuccess: (String) -> Unit, onError: (String) -> Unit) {
         scope.launch {
             try {
                 val ticket = RidaApiClient.api.createSupportTicket(
                     CreateTicketRequest(subject = subject, description = description, category = category)
                 )
-                refresh()
-                onSuccess(ticket.id)
-            } catch (e: Exception) {
-                onError(e.message ?: "Could not submit request")
+                currentCoroutineContext().ensureActive()
+                publish { refresh() }
+                withContext(Dispatchers.Main) { publish { onSuccess(ticket.id) } }
+            } catch (cancelled: CancellationException) { throw cancelled } catch (e: Exception) {
+                withContext(Dispatchers.Main) { publish { onError(e.message ?: "Could not submit request") } }
             }
         }
     }
@@ -71,12 +90,12 @@ object SupportRepository {
                 val fromUser = m.sender?.lowercase() != "agent" && m.sender?.lowercase() != "support"
                 TicketMsg(fromUser = fromUser, text = m.body, system = m.sender == null)
             }
-        } catch (_: Exception) {
+        } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) {
             emptyList()
         }
     }
 
-    fun sendMessage(ticketId: String, body: String, onDone: () -> Unit, onError: (String) -> Unit) {
+    @Synchronized fun sendMessage(ticketId: String, body: String, onDone: () -> Unit, onError: (String) -> Unit) {
         scope.launch {
             try {
                 RidaApiClient.api.sendTicketMessage(
@@ -84,9 +103,9 @@ object SupportRepository {
                     RidaApiClient.generateIdempotencyKey(),
                     CreateTicketMessageRequest(body = body)
                 )
-                onDone()
-            } catch (e: Exception) {
-                onError(e.message ?: "Could not send message")
+                withContext(Dispatchers.Main) { publish { onDone() } }
+            } catch (cancelled: CancellationException) { throw cancelled } catch (e: Exception) {
+                withContext(Dispatchers.Main) { publish { onError(e.message ?: "Could not send message") } }
             }
         }
     }

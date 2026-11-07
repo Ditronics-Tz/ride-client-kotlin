@@ -172,7 +172,7 @@ fun ProfileFlowNav(nav: NavHostController = rememberNavController()) {
         composable(FlowRoutes.CHANGE_PHONE) {
             ChangePhoneScreen(phone, { phone = phone.copy(password = it) }, { phone = phone.copy(step = PhoneStep.ENTER_NEW) },
                 { phone = phoneEnterNew(phone, it) }, { phone = phoneValidateNew(phone) },
-                { phone = phone.copy(otp = phone.otp.copy(code = it)) }, { phone = phoneSubmitOtp(phone, phone.otp.code) }, { phone = phone.copy(otp = phone.otp.copy(resendInSec = 30)) }, { nav.popBackStack() })
+                { phone = phone.copy(otp = phone.otp.copy(code = it)) }, { phone = phone.copy(otp = phone.otp.copy(error = "Phone verification is unavailable in this prototype.")) }, { phone = phone.copy(otp = phone.otp.copy(resendInSec = 30)) }, { nav.popBackStack() })
         }
         composable(FlowRoutes.CHANGE_EMAIL) {
             ChangeEmailScreen(email, { email = email.copy(password = it) }, { email = email.copy(step = EmailStep.ENTER_NEW) },

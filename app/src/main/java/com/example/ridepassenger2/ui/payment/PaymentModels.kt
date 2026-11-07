@@ -46,20 +46,28 @@ sealed interface MmEvent {
     data object Tick : MmEvent
 }
 
-fun mmReduce(s: MmSetupState, e: MmEvent): MmSetupState = when (e) {
-    is MmEvent.PickProvider -> s.copy(provider = e.p, phoneError = null, phase = MmVerifyPhase.ENTER)
-    is MmEvent.EnterPhone -> s.copy(phoneRaw = e.v, phoneError = null)
-    MmEvent.ToConfirm -> {
-        val err = TzPhone.validateForProvider(s.phoneRaw, s.provider)
-        if (err != null) s.copy(phoneError = err) else s.copy(phase = MmVerifyPhase.CONFIRM)
+fun mmReduce(s: MmSetupState, e: MmEvent): MmSetupState {
+    val editing = s.phase in setOf(MmVerifyPhase.ENTER, MmVerifyPhase.CONFIRM)
+    val failed = s.phase in setOf(MmVerifyPhase.DECLINED, MmVerifyPhase.TIMED_OUT, MmVerifyPhase.FAILED)
+    return when (e) {
+        is MmEvent.PickProvider -> if (editing) s.copy(provider = e.p, phoneError = null, phase = MmVerifyPhase.ENTER) else s
+        is MmEvent.EnterPhone -> if (editing) s.copy(phoneRaw = e.v, phoneError = null, phase = MmVerifyPhase.ENTER) else s
+        MmEvent.ToConfirm -> if (s.phase != MmVerifyPhase.ENTER) s else {
+            val error = TzPhone.validateForProvider(s.phoneRaw, s.provider)
+            if (error != null) s.copy(phoneError = error) else s.copy(phase = MmVerifyPhase.CONFIRM)
+        }
+        MmEvent.StartVerify -> if (s.phase == MmVerifyPhase.CONFIRM)
+            s.copy(phase = MmVerifyPhase.WAITING, resendInSec = 30, failReason = null) else s
+        MmEvent.Approved -> if (s.phase == MmVerifyPhase.WAITING) s.copy(phase = MmVerifyPhase.SUCCESS) else s
+        MmEvent.Declined -> if (s.phase == MmVerifyPhase.WAITING)
+            s.copy(phase = MmVerifyPhase.DECLINED, failReason = "Umekataa ombi") else s
+        MmEvent.TimedOut -> if (s.phase == MmVerifyPhase.WAITING)
+            s.copy(phase = MmVerifyPhase.TIMED_OUT, failReason = "Muda umeisha") else s
+        MmEvent.Retry -> if (failed) s.copy(phase = MmVerifyPhase.WAITING, resendInSec = 30, failReason = null) else s
+        MmEvent.Resend -> if ((failed || s.phase == MmVerifyPhase.WAITING) && s.resendInSec <= 0)
+            s.copy(phase = MmVerifyPhase.WAITING, resendInSec = 30, failReason = null) else s
+        MmEvent.Tick -> if (s.resendInSec > 0) s.copy(resendInSec = s.resendInSec - 1) else s
     }
-    MmEvent.StartVerify -> s.copy(phase = MmVerifyPhase.WAITING, resendInSec = 30, failReason = null)
-    MmEvent.Approved -> s.copy(phase = MmVerifyPhase.SUCCESS)
-    MmEvent.Declined -> s.copy(phase = MmVerifyPhase.DECLINED, failReason = "Umekataa ombi")
-    MmEvent.TimedOut -> s.copy(phase = MmVerifyPhase.TIMED_OUT, failReason = "Muda umeisha")
-    MmEvent.Retry -> s.copy(phase = MmVerifyPhase.WAITING, resendInSec = 30, failReason = null)
-    MmEvent.Resend -> if (s.resendInSec <= 0) s.copy(phase = MmVerifyPhase.WAITING, resendInSec = 30) else s
-    MmEvent.Tick -> if (s.resendInSec > 0) s.copy(resendInSec = s.resendInSec - 1) else s
 }
 
 // --- History ---

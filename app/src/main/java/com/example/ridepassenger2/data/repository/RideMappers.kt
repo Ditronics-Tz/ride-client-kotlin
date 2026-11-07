@@ -13,7 +13,7 @@ private val darZone = ZoneId.of("Africa/Dar_es_Salaam")
 
 fun RideResponse.isTerminal(): Boolean {
     val s = status.lowercase(Locale.US)
-    return s in setOf("completed", "cancelled", "canceled", "failed", "expired")
+    return s in setOf("completed", "finished", "cancelled", "canceled", "failed", "expired", "no_driver_found") || s.startsWith("cancelled_by_")
 }
 
 fun mapStatusToPhase(status: String): RidePhase {
@@ -21,7 +21,7 @@ fun mapStatusToPhase(status: String): RidePhase {
     return when {
         s in setOf("pending", "requested", "searching", "matching", "created", "queued") -> RidePhase.SEARCHING
         s in setOf("accepted", "assigned", "matched", "driver_assigned", "driver_found") -> RidePhase.DRIVER_FOUND
-        s in setOf("arriving", "driver_arriving", "at_pickup", "pickup") -> RidePhase.ARRIVING
+        s in setOf("arriving", "driver_arriving", "driver_arrived", "arrived", "at_pickup", "pickup") -> RidePhase.ARRIVING
         s in setOf("in_progress", "ongoing", "started", "in_trip", "en_route") -> RidePhase.IN_TRIP
         s in setOf("completed", "finished") -> RidePhase.IDLE
         else -> RidePhase.SEARCHING

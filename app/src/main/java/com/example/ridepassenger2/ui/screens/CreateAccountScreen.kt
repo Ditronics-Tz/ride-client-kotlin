@@ -82,6 +82,7 @@ import com.example.ridepassenger2.ui.components.RidaIcons
 import com.example.ridepassenger2.ui.components.RidaLogo
 import com.example.ridepassenger2.ui.theme.RIDEPASSENGER2Theme
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ensureActive
 
 private val RidaPrimary = Color(0xFF00C878)
 private val RidaForest = Color(0xFF063F32)
@@ -117,16 +118,17 @@ fun CreateAccountScreen(
     fun doCreate() {
         if (isLoading) return
         emailError = AuthValidation.emailError(email)
-        pwError = AuthValidation.passwordError(password)
+        pwError = AuthValidation.registrationPasswordError(password)
         if (emailError != null || pwError != null) return
         val normalizedEmail = email.trim()
         val handle = "@${normalizedEmail.substringBefore("@")}"
+        isLoading = true
         scope.launch {
-            isLoading = true
             formError = null
             try {
                 val regReq = RegisterRequest(email = normalizedEmail, password = password)
                 val sessionResp = RidaApiClient.api.register(regReq)
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 val user = sessionResp.user
                 SessionManager.save(
                     context = context,
@@ -140,7 +142,7 @@ fun CreateAccountScreen(
                 )
                 UserRepository.refreshSessionFromApi(context)
                 onCreateAccount()
-            } catch (e: Exception) {
+            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (e: Exception) {
                 formError = com.example.ridepassenger2.data.remote.RidaApiErrors.message(e, "Could not create account. Check your connection and try again.")
             } finally {
                 isLoading = false
@@ -295,8 +297,8 @@ fun CreateAccountScreen(
                 GoogleSignInButton(
                     onClick = {
                         if (isLoading) return@GoogleSignInButton
+                        isLoading = true
                         scope.launch {
-                            isLoading = true
                             try {
                                 val result = GoogleAuthManager.signIn(context)
                                 if (result.isSuccess) {

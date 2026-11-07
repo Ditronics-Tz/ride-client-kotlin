@@ -28,7 +28,7 @@ import org.osmdroid.views.overlay.Marker
 fun SharedRideScreen(back: () -> Unit) {
  val context=LocalContext.current
  val session by com.example.ridepassenger2.data.local.SessionManager.observe(context).collectAsState(initial=com.example.ridepassenger2.data.local.SessionManager.Session())
- key(session.loggedIn,session.email) { if(session.loggedIn) SharedRideContent(back) else Text("Sign in to view shared rides.") }
+ key(session.loggedIn,session.sessionId) { if(session.loggedIn) SharedRideContent(back) else Text("Sign in to view shared rides.") }
 }
 
 @Composable
@@ -67,8 +67,7 @@ private fun SharedRideContent(back: () -> Unit) {
  val page=if(history&&historyOffset>0)api.list("mine",offset=historyOffset).trips else activePage
  mine=mergeTransportSnapshots(mine,page)
         active = activePage.firstOrNull {
-            it.status in listOf("waiting", "in_progress") &&
-                it.my_seat?.status in listOf("held", "confirmed")
+            it.isPassengerCommitment()
         }
         val center = area
         nearby =

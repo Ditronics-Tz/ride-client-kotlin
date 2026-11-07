@@ -95,6 +95,9 @@ fun otpClear(current: OtpState) = current.copy(code = "", error = null)
 /** Returns new state after submitting; onOk invoked by caller when code matches expected. */
 fun otpSubmit(current: OtpState, expected: String): OtpState {
     if (current.locked) return current.copy(error = "Umefungiwa. Jaribu baadaye")
+    if (current.code.length != 6 || current.code.any { !it.isDigit() } || expected.length != 6) {
+        return current.copy(error = "Weka kodi ya tarakimu 6")
+    }
     if (current.code != expected) {
         val left = current.attemptsLeft - 1
         return if (left <= 0) current.copy(attemptsLeft = 0, locked = true, error = "Majaribio yameisha")

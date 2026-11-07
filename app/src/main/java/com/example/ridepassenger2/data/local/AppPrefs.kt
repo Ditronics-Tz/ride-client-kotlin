@@ -27,12 +27,19 @@ object AppPrefs {
     private val NOTIF_PROMOS = booleanPreferencesKey("notif_promos")
     private val SHARE_LOCATION = booleanPreferencesKey("share_location")
 
-    val PAYMENT_OPTIONS = listOf("Cash", "M-Pesa", "Tigo Pesa", "HaloPesa", "Card")
+    suspend fun clearAccountData(context: Context) {
+        context.appPrefsStore.edit { prefs ->
+            prefs.clear()
+        }
+    }
+
+    val PAYMENT_OPTIONS = listOf("Cash")
 
     fun payment(context: Context): Flow<String> =
-        context.appPrefsStore.data.map { it[PAYMENT] ?: "Cash" }
+        context.appPrefsStore.data.map { "Cash" }
 
     suspend fun setPayment(context: Context, method: String) {
+        require(method == "Cash") { "Only cash payments are currently supported" }
         context.appPrefsStore.edit { it[PAYMENT] = method }
     }
 
@@ -105,7 +112,7 @@ object AppPrefs {
         return when (key) {
             "home" -> prefs[HOME_QUERY] ?: fallback
             "work" -> prefs[WORK_QUERY] ?: fallback
-            "payment" -> prefs[PAYMENT] ?: "Cash"
+            "payment" -> "Cash"
             else -> fallback
         }
     }

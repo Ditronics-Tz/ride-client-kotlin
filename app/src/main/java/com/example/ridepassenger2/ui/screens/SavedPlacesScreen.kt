@@ -71,10 +71,10 @@ data class SavedPlaceItem(
     val address: String
 )
 
-private suspend fun geocodeLatLng(address: String): Pair<Double, Double> {
+private suspend fun geocodeLatLng(address: String): com.example.ridepassenger2.data.remote.PointDto? {
     val q = if (address.contains(",")) address else "$address, Dar es Salaam, Tanzania"
     val hit = MapServiceFactory.nominatim.search(query = q, limit = 1).firstOrNull()
-    return if (hit != null) Pair(hit.lat.toDouble(), hit.lon.toDouble()) else Pair(-6.7924, 39.2083)
+    return hit?.let { com.example.ridepassenger2.data.remote.PointDto(it.lat.toDouble(), it.lon.toDouble(), address) }
 }
 
 @Composable
@@ -95,6 +95,14 @@ fun SavedPlacesScreen(
     var placesLoading by remember { mutableStateOf(true) }
     var homePlaceId by remember { mutableStateOf<String?>(null) }
     var workPlaceId by remember { mutableStateOf<String?>(null) }
+    var saving by remember { mutableStateOf(false) }
+    val writer = remember {
+        com.example.ridepassenger2.data.repository.SavedPlaceWriter(
+            RidaApiClient.api, ::geocodeLatLng
+        ) { kind, address ->
+            if (kind == "home") AppPrefs.setHome(context, address) else AppPrefs.setWork(context, address)
+        }
+    }
 
     LaunchedEffect(Unit) {
         placesLoading = true
@@ -111,7 +119,7 @@ fun SavedPlacesScreen(
             customPlaces = resp.places
                 .filter { it.kind == "custom" && !it.id.isNullOrBlank() }
                 .map { SavedPlaceItem(it.id!!, it.label, it.address) }
-        } catch (_: Exception) {
+        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (_: Exception) {
             customPlaces = emptyList()
         } finally {
             placesLoading = false
@@ -351,83 +359,27 @@ fun SavedPlacesScreen(
             initialLabel = editTitleDraft,
             initialAddress = editAddressDraft,
             onBack = { editingType = null },
-            onSave = { label, address ->
+            onSave = save@{ label, address ->
+                if (saving) return@save
+                saving = true
+                val target = editingType
+                val kind = if (target in setOf("home", "work")) target!! else "custom"
+                val id = when (target) { "home" -> homePlaceId; "work" -> workPlaceId; "new" -> null; else -> target }
                 scope.launch {
                     try {
-                        val (lat, lng) = geocodeLatLng(address)
-                        when (editingType) {
-                            "home" -> {
-                                AppPrefs.setHome(context, address)
-                                val dto = SavedPlaceDto(
-                                    id = homePlaceId,
-                                    kind = "home",
-                                    label = label.ifBlank { "Home" },
-                                    address = address,
-                                    lat = lat,
-                                    lng = lng
-                                )
-                                if (homePlaceId != null) {
-                                    RidaApiClient.api.updateSavedPlace(homePlaceId!!, dto)
-                                } else {
-                                    val created = RidaApiClient.api.createSavedPlace(dto)
-                                    homePlaceId = created.id
-                                }
-                            }
-                            "work" -> {
-                                AppPrefs.setWork(context, address)
-                                val dto = SavedPlaceDto(
-                                    id = workPlaceId,
-                                    kind = "work",
-                                    label = label.ifBlank { "Work" },
-                                    address = address,
-                                    lat = lat,
-                                    lng = lng
-                                )
-                                if (workPlaceId != null) {
-                                    RidaApiClient.api.updateSavedPlace(workPlaceId!!, dto)
-                                } else {
-                                    val created = RidaApiClient.api.createSavedPlace(dto)
-                                    workPlaceId = created.id
-                                }
-                            }
-                            "new" -> {
-                                RidaApiClient.api.createSavedPlace(
-                                    SavedPlaceDto(
-                                        kind = "custom",
-                                        label = label,
-                                        address = address,
-                                        lat = lat,
-                                        lng = lng
-                                    )
-                                )
-                            }
-                            else -> {
-                                val id = editingType
-                                if (id != null) {
-                                    RidaApiClient.api.updateSavedPlace(
-                                        id,
-                                        SavedPlaceDto(
-                                            id = id,
-                                            kind = "custom",
-                                            label = label,
-                                            address = address,
-                                            lat = lat,
-                                            lng = lng
-                                        )
-                                    )
-                                }
-                            }
-                        }
+                        val saved = writer.save(kind, id, label.ifBlank { if (kind == "home") "Home" else "Work" }, address)
+                        when (kind) { "home" -> homePlaceId = saved.id; "work" -> workPlaceId = saved.id }
+                        editingType = null
                         try {
                             val resp = RidaApiClient.api.getSavedPlaces()
                             customPlaces = resp.places
                                 .filter { it.kind == "custom" && !it.id.isNullOrBlank() }
                                 .map { SavedPlaceItem(it.id!!, it.label, it.address) }
-                        } catch (_: Exception) { }
-                    } catch (e: Exception) {
+                        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (_: Exception) { }
+                    } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (e: Exception) {
                         Toast.makeText(context, e.message ?: "Could not save place", Toast.LENGTH_LONG).show()
                     }
-                    editingType = null
+                    finally { saving = false }
                 }
             }
         )

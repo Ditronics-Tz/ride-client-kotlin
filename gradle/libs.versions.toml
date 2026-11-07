@@ -1,4 +1,5 @@
 [versions]
+desugarJdk = "2.1.5"
 agp = "9.4.1"
 kotlin = "2.2.10"
 coreKtx = "1.13.1"
@@ -27,6 +28,7 @@ credentials = "1.6.0"
 googleid = "1.2.0"
 
 [libraries]
+desugar-jdk-libs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugarJdk" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }

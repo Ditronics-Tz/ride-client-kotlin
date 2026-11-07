@@ -36,10 +36,10 @@ object ProfilePhotoRepository {
                 ?: ProfilePhotoContract.photoUrl(RidaApiClient.api.getProfile(), RidaApiClient.BASE_URL)
                 ?: throw IllegalStateException("Couldn't load the uploaded photo. Try again.")
             val current = SessionManager.observe(context).first()
-            if (current.loggedIn != session.loggedIn || current.email != session.email || current.phone != session.phone) {
+            if (!current.loggedIn || current.sessionId != session.sessionId) {
                 throw CancellationException("The signed-in account changed.")
             }
-            SessionManager.updateProfilePicture(context, url, forceRefresh = true)
+            SessionManager.updateProfilePicture(context, url, forceRefresh = true, expectedSessionId = session.sessionId)
             Result.success(Unit)
         } catch (e: CancellationException) {
             throw e

@@ -52,7 +52,8 @@ fun PromotionDetailsScreen(
     onBack: () -> Unit = {},
     onApply: (String) -> Unit = {},
     initialCode: String? = null,
-    fare: Long? = null
+    fare: Long? = null,
+    api: com.example.ridepassenger2.data.remote.RidaApi = RidaApiClient.api
 ) {
     val scope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -60,6 +61,7 @@ fun PromotionDetailsScreen(
     val liveFareQuote by RideRepository.quoteTzs.collectAsState()
     val effectiveFare = (fare ?: liveFareQuote ?: 1000L).coerceAtLeast(1000L)
 
+    val currentFare by rememberUpdatedState(effectiveFare)
     var isLoading by remember { mutableStateOf(true) }
     var availablePromos by remember { mutableStateOf<List<PromoOfferDto>>(emptyList()) }
     var selectedPromo by remember { mutableStateOf<PromoOfferDto?>(null) }
@@ -72,8 +74,10 @@ fun PromotionDetailsScreen(
     LaunchedEffect(initialCode, effectiveFare) {
         try {
             isLoading = true
+            isSuccess = false
+            selectedPromo = null
             validationMessage = null
-            val response = RidaApiClient.api.getAvailablePromos(fare = effectiveFare)
+            val response = api.getAvailablePromos(fare = effectiveFare)
             availablePromos = response.promos
 
             if (!initialCode.isNullOrBlank()) {
@@ -82,7 +86,7 @@ fun PromotionDetailsScreen(
                     selectedPromo = matched
                 } else {
                     try {
-                        val valResp = RidaApiClient.api.validatePromo(
+                        val valResp = api.validatePromo(
                             ValidatePromoRequest(code = initialCode, fare = effectiveFare)
                         )
                         if (valResp.valid) {
@@ -93,14 +97,14 @@ fun PromotionDetailsScreen(
                                 finalFare = valResp.finalFare
                             )
                             isSuccess = true
-                            validationMessage = valResp.message ?: "Promo code valid!"
+                            validationMessage = "Code is eligible for this estimate. Discounts are not applied to bookings in this app yet."
                         }
-                    } catch (_: Exception) { }
+                    } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (_: Exception) { }
                 }
             } else if (availablePromos.isNotEmpty()) {
                 selectedPromo = availablePromos.first()
             }
-        } catch (_: Exception) {
+        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (_: Exception) {
             validationMessage = "Could not fetch promotions. Check your network."
         } finally {
             isLoading = false
@@ -108,6 +112,8 @@ fun PromotionDetailsScreen(
     }
 
     fun submitPromoValidation() {
+        if (isApplying || isLoading) return
+        val requestedFare = effectiveFare
         val code = promoCodeInput.trim().uppercase()
         if (code.isBlank()) {
             validationMessage = "Please enter a promo code"
@@ -115,13 +121,20 @@ fun PromotionDetailsScreen(
             return
         }
         keyboardController?.hide()
+        isApplying = true
+        isSuccess = false
         scope.launch {
             try {
                 isApplying = true
                 validationMessage = null
-                val response = RidaApiClient.api.validatePromo(
-                    ValidatePromoRequest(code = code, fare = effectiveFare)
+                val response = api.validatePromo(
+                    ValidatePromoRequest(code = code, fare = requestedFare)
                 )
+                if (requestedFare != currentFare || code != promoCodeInput.trim().uppercase()) {
+                    isSuccess = false
+                    validationMessage = "The code or fare changed. Check eligibility again."
+                    return@launch
+                }
                 if (response.valid) {
                     isSuccess = true
                     selectedPromo = response.promo ?: PromoOfferDto(
@@ -130,8 +143,7 @@ fun PromotionDetailsScreen(
                         discountTzs = response.discountAmount,
                         finalFare = response.finalFare
                     )
-                    validationMessage = response.message ?: "Promo code successfully applied!"
-                    onApply(code)
+                    validationMessage = "Code is eligible for this estimate. Discounts are not applied to bookings in this app yet."
                 } else {
                     isSuccess = false
                     validationMessage = response.message ?: "Invalid or expired promo code"
@@ -141,7 +153,7 @@ fun PromotionDetailsScreen(
                 val rawJson = e.response()?.errorBody()?.string()
                 val parsedMsg = parsePromoErrorJson(rawJson)
                 validationMessage = parsedMsg ?: "Validation error (${e.code()})"
-            } catch (_: Exception) {
+            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (_: Exception) {
                 isSuccess = false
                 validationMessage = "Failed to validate promo code. Please check your connection."
             } finally {
@@ -483,7 +495,7 @@ fun PromotionDetailsScreen(
                     .shadow(4.dp, RoundedCornerShape(18.dp), ambientColor = RidaGreen.copy(alpha = 0.2f))
                     .clip(RoundedCornerShape(18.dp))
                     .background(RidaGreen)
-                    .clickable(enabled = !isApplying, onClick = { submitPromoValidation() }),
+                    .clickable(enabled = !isApplying && !isLoading, onClick = { submitPromoValidation() }),
                 contentAlignment = Alignment.Center
             ) {
                 if (isApplying) {
@@ -494,7 +506,7 @@ fun PromotionDetailsScreen(
                     )
                 } else {
                     Text(
-                        text = if (isSuccess) "Applied to Account" else "Validate & Apply Code",
+                        text = if (isSuccess) "Code eligible (preview)" else "Check promo eligibility",
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
@@ -519,7 +531,7 @@ private fun parsePromoErrorJson(json: String?): String? {
             ?: resp?.fields?.get("code")
             ?: resp?.error
             ?: resp?.message
-    } catch (_: Exception) {
+    } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (_: Exception) {
         null
     }
 }

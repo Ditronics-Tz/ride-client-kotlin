@@ -35,6 +35,8 @@ fun phoneValidateNew(s: PhoneChangeState): PhoneChangeState {
     return s.copy(newError = null, step = PhoneStep.OTP, otp = OtpState(resendInSec = 30))
 }
 fun phoneSubmitOtp(s: PhoneChangeState, expected: String): PhoneChangeState {
+    if (s.step != PhoneStep.OTP || expected.length != 6 || expected.any { !it.isDigit() } ||
+        s.otp.code.length != 6 || s.otp.locked) return s
     val next = otpSubmit(s.otp, expected)
     return if (next.error == null && s.otp.code == expected) s.copy(otp = next, step = PhoneStep.SUCCESS)
     else s.copy(otp = next)

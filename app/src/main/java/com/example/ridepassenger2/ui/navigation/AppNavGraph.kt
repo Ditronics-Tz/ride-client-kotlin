@@ -13,6 +13,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -93,6 +95,13 @@ fun AppNavGraph(
     val showBottomBar = currentRoute in BottomBarRoutes
     val context = LocalContext.current
     val ioScope = rememberCoroutineScope()
+    val session by SessionManager.observe(context).collectAsState(initial = null)
+    LaunchedEffect(session?.loggedIn, currentRoute) {
+        if (session?.loggedIn == false && currentRoute != null && currentRoute !in setOf(
+                Routes.ONBOARDING, Routes.SIGN_IN, Routes.CREATE_ACCOUNT, Routes.FORGOT_PASSWORD)) {
+            navController.navigate(Routes.SIGN_IN) { popUpTo(0) { inclusive = true } }
+        }
+    }
     val view = LocalView.current
     val usesThemeBackground = visibleRoute in ThemeRoutes
     val themeIsLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
@@ -108,7 +117,7 @@ fun AppNavGraph(
         }
     }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(session?.sessionId, session?.loggedIn) {
         NotificationRepository.startLongPolling(context, ioScope)
         onDispose {
             NotificationRepository.stopLongPolling()
@@ -119,7 +128,7 @@ fun AppNavGraph(
         ioScope.launch {
             try { SessionManager.clear(context) } catch (_: Exception) { }
             navController.navigate(Routes.SIGN_IN) {
-                popUpTo(Routes.HOME_MAP) { inclusive = true }
+                popUpTo(0) { inclusive = true }
             }
         }
     }
@@ -184,9 +193,7 @@ fun AppNavGraph(
                 composable(Routes.SIGN_IN) {
                     SignInScreen(
                         onSignIn = {
-                            navController.navigate(Routes.HOME_MAP) {
-                                popUpTo(Routes.ONBOARDING) { inclusive = true }
-                            }
+                            navController.openHomeAfterAuthentication()
                         },
                         onForgotPassword = { navController.navigate(Routes.FORGOT_PASSWORD) },
                         onSignUp = {
@@ -197,9 +204,7 @@ fun AppNavGraph(
                             }
                         },
                         onGoogle = {
-                            navController.navigate(Routes.HOME_MAP) {
-                                popUpTo(Routes.ONBOARDING) { inclusive = true }
-                            }
+                            navController.openHomeAfterAuthentication()
                         }
                     )
                 }
@@ -213,14 +218,10 @@ fun AppNavGraph(
                             }
                         },
                         onCreateAccount = {
-                            navController.navigate(Routes.HOME_MAP) {
-                                popUpTo(Routes.ONBOARDING) { inclusive = true }
-                            }
+                            navController.openHomeAfterAuthentication()
                         },
                         onGoogle = {
-                            navController.navigate(Routes.HOME_MAP) {
-                                popUpTo(Routes.ONBOARDING) { inclusive = true }
-                            }
+                            navController.openHomeAfterAuthentication()
                         }
                     )
                 }
@@ -257,7 +258,9 @@ fun AppNavGraph(
                         },
                         onSharedRide = { navController.navigate("shared-rides") },
                         onNavigateToRide = { rideId ->
-                            navController.navigate(Routes.RIDE_DETAILS)
+                            RideRepository.openRideDetails(rideId) { fromHistory ->
+                                navController.navigate("${Routes.RIDE_DETAILS}?fromHistory=$fromHistory")
+                            }
                         }
                     )
                 }
@@ -419,5 +422,13 @@ fun AppNavGraph(
                 composable(Routes.FLOW_GALLERY) { FlowGallery() }
             }
         }
+    }
+}
+
+/** A new authenticated session must not restore an earlier login/signup stack. */
+internal fun NavHostController.openHomeAfterAuthentication() {
+    navigate(Routes.HOME_MAP) {
+        popUpTo(graph.id) { inclusive = true }
+        launchSingleTop = true
     }
 }

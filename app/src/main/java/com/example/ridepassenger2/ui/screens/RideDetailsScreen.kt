@@ -53,6 +53,10 @@ fun RideDetailsScreen(
     val ui = RideDetailsUiState.from(liveRide, justCompleted, selected, showSelectedHistory)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val actionError by RideRepository.rideActionError.collectAsState()
+    LaunchedEffect(actionError) {
+        actionError?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
+    }
     val driverPhone = ui.activeRide?.driver?.phone?.filter { it.isDigit() || it == '+' }
     var isSharing by remember { mutableStateOf(false) }
     var historyDestination by remember(selected) { mutableStateOf<GeoPoint?>(null) }
@@ -131,21 +135,27 @@ fun RideDetailsScreen(
                 }
             }
         },
-        onPrimary = {
+        onPrimary = primary@{
             when {
                 ui.activeRide != null -> {
-                    RideRepository.cancelRide()
-                    RideRepository.selectHistory(null)
-                }
-                ui.isReceipt -> {
-                    RideRepository.consumeCompleted()
-                    RideRepository.selectHistory(null)
-                    RideRepository.requestRide(ui.pickup, ui.destination, ui.price, ui.title)
+                    RideRepository.cancelRide {
+                        RideRepository.selectHistory(null)
+                        onCancel()
+                    }
+                    return@primary
                 }
                 ui.historyItem != null -> {
-                    RideRepository.selectHistory(null)
+                    if (RideRepository.isBusy()) {
+                        Toast.makeText(context, "Finish your active ride or wait for the pending request before booking again.", Toast.LENGTH_LONG).show()
+                        return@primary
+                    }
                     RideRepository.clearRoute()
-                    RideRepository.requestRide(ui.pickup, ui.destination, ui.price, ui.title)
+                    RideRepository.requestRide(ui.pickup, ui.destination, ui.price, ui.title) {
+                        if (ui.isReceipt) RideRepository.consumeCompleted()
+                        RideRepository.selectHistory(null)
+                        onCancel()
+                    }
+                    return@primary
                 }
             }
             onCancel()

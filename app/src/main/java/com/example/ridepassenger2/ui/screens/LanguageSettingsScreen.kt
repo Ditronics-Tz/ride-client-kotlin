@@ -202,8 +202,7 @@ fun LanguageSettingsScreen(
                     .clip(RoundedCornerShape(18.dp))
                     .background(RidaGreen)
                     .clickable {
-                        Toast.makeText(context, "Language saved as $selectedLanguage", Toast.LENGTH_SHORT).show()
-                        onSaveLanguage(selectedLanguage)
+                        Toast.makeText(context, "The app currently supports English. Language switching is unavailable.", Toast.LENGTH_LONG).show()
                     },
                 contentAlignment = Alignment.Center
             ) {

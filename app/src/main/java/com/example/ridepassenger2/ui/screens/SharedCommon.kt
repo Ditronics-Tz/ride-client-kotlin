@@ -213,7 +213,7 @@ internal fun SharedTripEntry(onOpen:()->Unit,label:String) {
  LaunchedEffect(owner) {
  owner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED){
  while(true){try{
- active=RidaApiClient.transport.list("mine").trips.any{it.status in listOf("waiting","in_progress")}
+ active=RidaApiClient.transport.list("mine").trips.any{it.isPassengerCommitment()}
  }catch(e:kotlinx.coroutines.CancellationException){throw e}catch(_:Exception){}
  kotlinx.coroutines.delay(5000)
  }

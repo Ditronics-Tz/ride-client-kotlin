@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.first
 object UserRepository {
 
     suspend fun refreshSessionFromApi(context: Context) {
+        val owner = SessionManager.observe(context).first()
+        if (!owner.loggedIn) return
         try {
             val me = RidaApiClient.api.me()
             val user = me.user
@@ -22,14 +24,15 @@ object UserRepository {
                 handle = handle,
                 phone = user.phone ?: "",
                 email = user.email ?: "",
-                profileCompleted = me.isProfileComplete()
+                profileCompleted = me.isProfileComplete(),
+                expectedSessionId = owner.sessionId
             )
-        } catch (_: Exception) { }
+        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (_: Exception) { }
 
         try {
             val profile = RidaApiClient.api.getProfile()
             ProfilePhotoContract.photoUrl(profile, RidaApiClient.BASE_URL)?.let {
-                SessionManager.updateProfilePicture(context, it)
+                SessionManager.updateProfilePicture(context, it, expectedSessionId = owner.sessionId)
             }
             val fullName = (profile["full_name"] as? String)
                 ?: (profile["name"] as? String)
@@ -41,18 +44,21 @@ object UserRepository {
                     context,
                     fullName ?: current.name,
                     phone ?: current.phone,
-                    email ?: current.email
+                    email ?: current.email,
+                    expectedSessionId = owner.sessionId
                 )
             }
-        } catch (_: Exception) { }
+        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (_: Exception) { }
     }
 
     suspend fun updateProfileOnServer(context: Context, fullName: String): Result<Unit> {
+        val owner = SessionManager.observe(context).first()
         return try {
             RidaApiClient.api.updateProfile(UpdateProfileRequest(fullName = fullName))
             val current = SessionManager.observe(context).first()
-            SessionManager.updateProfile(context, fullName, current.phone, current.email)
+            SessionManager.updateProfile(context, fullName, current.phone, current.email, expectedSessionId = owner.sessionId)
             Result.success(Unit)
+        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled
         } catch (e: Exception) {
             Result.failure(IllegalArgumentException(RidaApiErrors.message(e, "Could not save your profile. Try again."), e))
         }

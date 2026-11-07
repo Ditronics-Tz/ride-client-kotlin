@@ -228,8 +228,7 @@ fun PaymentMethodsScreen(
                 .background(XCard)
                 .border(1.dp, XBorder, RoundedCornerShape(18.dp))
                 .clickable {
-                    scope.launch { AppPrefs.setPayment(context, "M-Pesa") }
-                    Toast.makeText(context, "Mobile money selected", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Mobile money payments are currently unavailable. Pay the driver in cash.", Toast.LENGTH_LONG).show()
                 }
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -262,8 +261,7 @@ fun PaymentMethodsScreen(
                 .background(XCard)
                 .border(1.dp, XBorder, RoundedCornerShape(18.dp))
                 .clickable {
-                    scope.launch { AppPrefs.setPayment(context, "Card") }
-                    Toast.makeText(context, "Card selected", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Card payments are currently unavailable. Pay the driver in cash.", Toast.LENGTH_LONG).show()
                 }
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -361,6 +359,9 @@ fun ScheduleRideScreen(onBack: () -> Unit = {}, prefillDestination: String = "")
     val scheduled by RideRepository.scheduled.collectAsState()
 
     LaunchedEffect(Unit) { RideRepository.refreshScheduled() }
+    val scheduling by RideRepository.schedulePending.collectAsState()
+    val scheduleError by RideRepository.rideActionError.collectAsState()
+    LaunchedEffect(scheduleError) { scheduleError?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show() } }
 
     val days = listOf("Today", "Tomorrow", "Saturday")
     val times = listOf("8:00 AM", "10:00 AM", "12:30 PM", "5:00 PM", "7:30 PM")
@@ -589,8 +590,10 @@ fun ScheduleRideScreen(onBack: () -> Unit = {}, prefillDestination: String = "")
                         Toast.makeText(context, "Enter a destination first", Toast.LENGTH_SHORT).show()
                         return@clickable
                     }
-                    RideRepository.scheduleRide(pickup, destination, day, time, option, price)
-                    Toast.makeText(context, "Scheduled $day $time • $price", Toast.LENGTH_LONG).show()
+                    if (scheduling) return@clickable
+                    RideRepository.scheduleRide(pickup, destination, day, time, option, price) {
+                        Toast.makeText(context, "Ride scheduled for $day $time", Toast.LENGTH_LONG).show()
+                    }
                 }
                 .padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.Center,
@@ -715,10 +718,7 @@ fun PackageRideScreen(onBack: () -> Unit = {}, onSent: () -> Unit = {}) {
                         return@clickable
                     }
                     if (phoneError != null) return@clickable
-                    RideRepository.clearRoute()
-                    RideRepository.requestRide(pickup.ifBlank { "Your location" }, dropoff, price, "Package • $size")
-                    Toast.makeText(context, "Courier requested • $price", Toast.LENGTH_LONG).show()
-                    onSent()
+                    Toast.makeText(context, "Courier booking is currently unavailable. Book a passenger ride from Home.", Toast.LENGTH_LONG).show()
                 },
             contentAlignment = Alignment.Center
         ) {
@@ -728,12 +728,12 @@ fun PackageRideScreen(onBack: () -> Unit = {}, onSent: () -> Unit = {}) {
 }
 
 @Composable
-private fun ScheduleField(label: String, value: String, placeholder: String = "", keyboardType: androidx.compose.ui.text.input.KeyboardType = androidx.compose.ui.text.input.KeyboardType.Text, onChange: (String) -> Unit) {
+private fun ScheduleField(label: String, value: String, placeholder: String = "", keyboardType: androidx.compose.ui.text.input.KeyboardType = androidx.compose.ui.text.input.KeyboardType.Text, enabled: Boolean = true, onChange: (String) -> Unit) {
     Column {
         Text(text = label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = XTitle)
         Spacer(modifier = Modifier.height(6.dp))
         OutlinedTextField(
-            value = value, onValueChange = onChange,
+            value = value, onValueChange = onChange, enabled = enabled,
             placeholder = { Text(text = placeholder.ifBlank { label }, fontSize = 13.sp, color = XMuted) },
             singleLine = true, modifier = Modifier.fillMaxWidth(),
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = keyboardType),
@@ -785,7 +785,7 @@ fun SafetyScreen(onBack: () -> Unit = {}) {
             Text(text = "Emergency SOS (112)", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF991B1B))
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Instantly connects you to local emergency services in Tanzania.",
+                text = "Opens the phone dialer for emergency services in Tanzania.",
                 fontSize = 12.5.sp,
                 color = Color(0xFFB91C1C),
                 textAlign = TextAlign.Center
@@ -821,8 +821,8 @@ fun SafetyScreen(onBack: () -> Unit = {}) {
 
         SafetyToolCard(
             icon = RidaIcons.Share,
-            title = "Share Live Location",
-            subtitle = "Send real-time ride tracking to family or friends",
+            title = "Share trip details",
+            subtitle = "Send a snapshot of your ride details to family or friends",
             onClick = {
                 val text = if (ride != null) "I'm in a Rida ${ride!!.option}: ${ride!!.pickup} → ${ride!!.destination}, driver ${ride!!.driver?.name ?: "assigning"} ${ride!!.driver?.plate ?: ""}, fare ${ride!!.price}."
                 else "I'm using Rida passenger app in Dar es Salaam."
@@ -846,8 +846,8 @@ fun SafetyScreen(onBack: () -> Unit = {}) {
 
         SafetyToolCard(
             icon = RidaIcons.Users,
-            title = "Trusted Emergency Contacts",
-            subtitle = "Speed-dial your primary emergency contact",
+            title = "Open phone dialer",
+            subtitle = "Choose a contact or enter a number in your phone app",
             onClick = {
                 try { context.startActivity(Intent(Intent.ACTION_DIAL)) }
                 catch (_: Exception) { }
@@ -1145,8 +1145,9 @@ fun PersonalInfoScreen(onBack: () -> Unit = {}) {
                 onClick = {
                     val trimmed = name.trim()
                     nameError = com.example.ridepassenger2.ui.common.NameRules.error(trimmed)
-                    if (nameError == null) scope.launch {
+                    if (nameError == null) {
                         nameSaving = true
+                        scope.launch {
                         val result = UserRepository.updateProfileOnServer(context, trimmed)
                         nameSaving = false
                         result.fold(
@@ -1156,6 +1157,7 @@ fun PersonalInfoScreen(onBack: () -> Unit = {}) {
                             },
                             onFailure = { nameError = com.example.ridepassenger2.data.remote.RidaApiErrors.message(it, "Could not save your name. Try again.") }
                         )
+                        }
                     }
                 },
                 enabled = !nameSaving && name.trim().isNotEmpty(),
@@ -1177,8 +1179,10 @@ fun PersonalInfoScreen(onBack: () -> Unit = {}) {
                 Text(if (session.phone.isBlank()) "Add phone number" else "Edit phone number")
             }
         } else {
-            ScheduleField("Tanzania phone number", phoneDraft, "+255 712 345 678", androidx.compose.ui.text.input.KeyboardType.Phone) {
+            ScheduleField("Tanzania phone number", phoneDraft, "+255 712 345 678", androidx.compose.ui.text.input.KeyboardType.Phone, enabled = !phoneLoading) {
                 phoneDraft = it
+                otpSent = false
+                otp = ""
                 phoneError = null
                 otpSent = false
                 otp = ""
@@ -1194,13 +1198,14 @@ fun PersonalInfoScreen(onBack: () -> Unit = {}) {
                         if (normalized == null) {
                             phoneError = "Enter a valid Tanzania phone number"
                         } else {
+                            phoneLoading = true
+                            val owner = session
                             scope.launch {
-                                phoneLoading = true
                                 phoneError = null
                                 try {
                                     RidaApiClient.api.requestOtp(com.example.ridepassenger2.data.remote.RequestOtpRequest(normalized))
                                     otpSent = true
-                                } catch (e: Exception) {
+                                } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (e: Exception) {
                                     phoneError = com.example.ridepassenger2.data.remote.RidaApiErrors.message(e, "Could not send a verification code. Try again.")
                                 } finally {
                                     phoneLoading = false
@@ -1226,13 +1231,14 @@ fun PersonalInfoScreen(onBack: () -> Unit = {}) {
                         if (normalized == null) {
                             phoneError = "Enter a valid Tanzania phone number"
                         } else {
+                            phoneLoading = true
+                            val owner = session
                             scope.launch {
-                                phoneLoading = true
                                 phoneError = null
                                 try {
                                     RidaApiClient.api.requestOtp(com.example.ridepassenger2.data.remote.RequestOtpRequest(normalized))
                                     otp = ""
-                                } catch (e: Exception) {
+                                } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (e: Exception) {
                                     phoneError = com.example.ridepassenger2.data.remote.RidaApiErrors.message(e, "Could not resend the code. Try again.")
                                 } finally {
                                     phoneLoading = false
@@ -1252,19 +1258,20 @@ fun PersonalInfoScreen(onBack: () -> Unit = {}) {
                         if (otp.length != 6) {
                             phoneError = "Enter the 6-digit verification code"
                         } else {
+                            phoneLoading = true
+                            val owner = session
                             scope.launch {
-                                phoneLoading = true
                                 phoneError = null
                                 try {
                                     val verified = RidaApiClient.api.verifyOtp(com.example.ridepassenger2.data.remote.VerifyOtpRequest(otp))
                                     val serverUser = verified.user
                                     val normalized = com.example.ridepassenger2.ui.common.TzPhone.normalize(phoneDraft).orEmpty()
-                                    SessionManager.updateProfile(context, serverUser.name.orEmpty().ifBlank { session.name }, serverUser.phone ?: normalized, serverUser.email ?: session.email)
+                                    SessionManager.updateProfile(context, serverUser.name.orEmpty().ifBlank { session.name }, serverUser.phone ?: normalized, serverUser.email ?: session.email, expectedSessionId = owner.sessionId)
                                     Toast.makeText(context, "Phone number verified", Toast.LENGTH_SHORT).show()
                                     editingPhone = false
                                     otpSent = false
                                     otp = ""
-                                } catch (e: Exception) {
+                                } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled } catch (e: Exception) {
                                     phoneError = com.example.ridepassenger2.data.remote.RidaApiErrors.message(e, "We couldn't verify that code. Check it and try again.")
                                 } finally {
                                     phoneLoading = false

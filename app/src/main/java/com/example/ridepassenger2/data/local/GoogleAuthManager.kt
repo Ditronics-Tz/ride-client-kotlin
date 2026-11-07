@@ -14,6 +14,7 @@ import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ensureActive
 
 object GoogleAuthManager {
 
@@ -63,6 +64,7 @@ object GoogleAuthManager {
                 "Rida did not return an access token"
             }
 
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
             SessionManager.saveGoogleSession(context, session)
             Result.success(session)
         } catch (e: CancellationException) {
